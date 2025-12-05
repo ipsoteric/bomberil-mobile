@@ -18,8 +18,6 @@ interface AuthState {
   isAuthenticated: boolean;
   userPermissions: string[]; // Lista de permisos (ej: ['accion_ver_inventario'])
   isLoading: boolean;
-  
-  // CORRECCIÓN: Ahora la interfaz acepta explícitamente los permisos
   signIn: (token: string, permissions: string[]) => Promise<void>;
   signOut: () => Promise<void>;
   hasPermission: (perm: string) => boolean;
@@ -68,49 +66,32 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const token = await tokenStorage.getToken();
       
+      // CASO 1: No hay token guardado
       if (!token) {
-        set({ isLoading: false });
+        // Importante: No hacemos nada más, pero DEJAMOS de cargar
+        set({ token: null, isAuthenticated: false, isLoading: false }); 
         return;
       }
 
-      // 1. Verificamos si el token es válido/no ha expirado localmente
+      // CASO 2: Hay token, verificamos expiración
       const user = jwtDecode<UserData>(token);
       const isExpired = user.exp ? (Date.now() / 1000) > user.exp : false;
 
       if (isExpired) {
-        console.log('El token ha expirado');
-        await get().signOut(); // Limpiamos todo
+        await get().signOut();
         set({ isLoading: false });
         return;
       }
 
-      // 2. Restauramos estado inicial (Optimistic update)
-      // Asumimos que está logueado mientras verificamos con el backend
-      set({ token, user, isAuthenticated: true });
-
-      // 3. (OPCIONAL PERO RECOMENDADO) Actualizar permisos frescos desde el backend
-      // Aquí es donde usamos 'client'. Es vital envolverlo en try/catch.
-      try {
-        // CAMBIAR URL: Ajusta '/auth/me/' a tu endpoint real que devuelve perfil y permisos
-        // const response = await client.get('/auth/me/'); 
-        // const freshPermissions = response.data.permissions;
-        
-        // POR AHORA: Simulamos permisos estáticos para que te funcione sin backend listo
-        const freshPermissions = ['accion_ver_inventario']; 
-        
-        set({ userPermissions: freshPermissions });
-      } catch (apiError) {
-        console.error("Error al refrescar permisos con backend:", apiError);
-        // Si falla la red, mantenemos al usuario logueado pero quizás con permisos viejos o vacíos
-        // Opcional: forzar logout si la política de seguridad es estricta.
-      }
+      // CASO 3: Token válido
+      // Simulamos permisos o los cargamos de API
+      const fakePermissions = ['accion_ver_inventario']; 
+      set({ token, user, isAuthenticated: true, userPermissions: fakePermissions, isLoading: false });
 
     } catch (e) {
-      console.log('Error general restaurando sesión', e);
-      await get().signOut();
-    } finally {
-      // Siempre quitamos el spinner de carga al final
-      set({ isLoading: false });
+      console.error('Error restaurando sesión:', e);
+      // Si algo falla, asumimos logout para no bloquear la app
+      set({ token: null, isAuthenticated: false, isLoading: false });
     }
   },
 }));
