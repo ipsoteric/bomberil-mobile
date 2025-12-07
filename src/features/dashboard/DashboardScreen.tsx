@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StatusBar, Image } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StatusBar, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/authStore';
 import { Feather } from '@expo/vector-icons';
@@ -8,28 +8,61 @@ import { AppStackParamList } from '@/navigation/types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Dashboard'>;
 
-export default function DashboardScreen({ navigation }: Props) {
-  const { user, signOut, hasPermission } = useAuthStore();
+// Interfaz para el componente de tarjeta (Mejora profesional)
+interface MenuCardProps {
+  title: string;
+  subtitle: string;
+  icon: keyof typeof Feather.glyphMap; // Asegura que solo uses iconos válidos
+  color: string;
+  onPress: () => void;
+  disabled?: boolean;
+}
 
-  // Validamos permisos específicos
-  const puedeVerInventario = hasPermission('accion_ver_inventario');
+export default function DashboardScreen({ navigation }: Props) {
+  // 1. Consumimos los datos frescos del Store (Sincronizados con backend)
+  const { user, estacion, signOut, hasPermission } = useAuthStore();
+
+  // 2. Verificamos el permiso de negocio real
+  const puedeVerInventario = hasPermission('acceso_gestion_inventario');
+  console.log(puedeVerInventario)
+  const puedeVerDocumentacion = hasPermission('acceso_gestion_documental');
+  console.log(puedeVerDocumentacion)
+
+  // 3. Función de Logout con confirmación para evitar toques accidentales
+  const handleSignOut = () => {
+    Alert.alert(
+      "Cerrar Sesión",
+      "¿Estás seguro que deseas salir?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        { text: "Salir", style: "destructive", onPress: signOut }
+      ]
+    );
+  };
 
   // Componente de Tarjeta de Menú Reutilizable
-  const MenuCard = ({ title, subtitle, icon, color, onPress, disabled = false }: any) => (
+  const MenuCard = ({ title, subtitle, icon, color, onPress, disabled = false }: MenuCardProps) => (
     <TouchableOpacity 
       onPress={onPress}
       disabled={disabled}
       activeOpacity={0.7}
-      className={`bg-white p-5 rounded-2xl mb-4 shadow-sm border border-gray-100 flex-row items-center ${disabled ? 'opacity-50' : ''}`}
+      className={`bg-white p-5 rounded-2xl mb-4 shadow-sm border border-gray-100 flex-row items-center ${disabled ? 'opacity-60 bg-gray-50' : ''}`}
     >
-      <View className={`p-4 rounded-xl ${color} mr-4`}>
+      <View className={`p-4 rounded-xl ${disabled ? 'bg-gray-400' : color} mr-4 shadow-sm`}>
         <Feather name={icon} size={24} color="white" />
       </View>
       <View className="flex-1">
-        <Text className="text-lg font-bold text-gray-800">{title}</Text>
+        <Text className={`text-lg font-bold ${disabled ? 'text-gray-400' : 'text-gray-800'}`}>
+          {title}
+        </Text>
         <Text className="text-gray-400 text-xs mt-1">{subtitle}</Text>
       </View>
-      <Feather name="chevron-right" size={20} color="#d1d5db" />
+      
+      {disabled ? (
+        <Feather name="lock" size={20} color="#9ca3af" />
+      ) : (
+        <Feather name="chevron-right" size={20} color="#d1d5db" />
+      )}
     </TouchableOpacity>
   );
 
@@ -39,32 +72,42 @@ export default function DashboardScreen({ navigation }: Props) {
       <SafeAreaView className="flex-1">
         
         {/* --- HEADER --- */}
-        <View className="px-6 py-6 flex-row justify-between items-center">
+        <View className="px-6 py-6 flex-row justify-between items-center bg-white border-b border-gray-100 pb-8 rounded-b-3xl shadow-sm z-10">
           <View>
-            <Text className="text-gray-400 text-sm font-medium">Bienvenido,</Text>
-            <Text className="text-2xl font-extrabold text-gray-900">
-              {user?.email ? user.email.split('@')[0] : 'Voluntario'}
+            <Text className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-1">
+              Bienvenido a tu Estación
             </Text>
-            <Text className="text-bomberil-700 text-xs font-bold mt-1">
-              SEGUNDA COMPAÑÍA IQUIQUE
+            <Text className="text-2xl font-extrabold text-gray-900" numberOfLines={1}>
+              {user?.nombre_completo || 'Voluntario'}
             </Text>
+            <View className="flex-row items-center mt-2">
+              <Feather name="map-pin" size={12} color="#b91c1c" />
+              <Text className="text-bomberil-700 text-xs font-bold ml-1">
+                {estacion?.nombre || 'Sin Asignación Activa'}
+              </Text>
+            </View>
           </View>
+          
           <TouchableOpacity 
-            onPress={signOut}
-            className="bg-gray-200 p-3 rounded-full"
+            onPress={handleSignOut}
+            className="bg-gray-100 p-3 rounded-full border border-gray-200"
           >
             <Feather name="log-out" size={20} color="#4b5563" />
           </TouchableOpacity>
         </View>
 
         {/* --- GRID DE MÓDULOS --- */}
-        <ScrollView className="flex-1 px-6 pt-2" showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          className="flex-1 px-6 pt-6" 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 40 }}
+        >
           
-          <Text className="text-gray-500 font-bold mb-4 uppercase text-xs tracking-wider">
-            Mi Gestión
+          <Text className="text-gray-400 font-bold mb-4 uppercase text-xs tracking-wider ml-1">
+            Mi Gestión Personal
           </Text>
 
-          {/* 1. Módulo MI PERFIL (Para todos) */}
+          {/* 1. Módulo MI PERFIL (Disponible para todos) */}
           <MenuCard 
             title="Mi Hoja de Vida" 
             subtitle="Historial, ficha médica y datos"
@@ -73,43 +116,41 @@ export default function DashboardScreen({ navigation }: Props) {
             onPress={() => navigation.navigate('MiPerfil')}
           />
 
-          {/* 2. Módulo INVENTARIO (Condicional) */}
-          {puedeVerInventario ? (
-            <MenuCard 
-              title="Inventario & Activos" 
-              subtitle="Escanear, mover y auditar"
-              icon="box"
-              color="bg-bomberil-700" // Rojo corporativo
-              onPress={() => navigation.navigate('InventarioHome')}
-            />
-          ) : (
-            // Opcional: Mostrar deshabilitado o no mostrar nada
-            <View className="bg-gray-100 p-4 rounded-xl mb-4 border border-gray-200 border-dashed items-center flex-row">
-               <Feather name="lock" size={16} color="#9ca3af" />
-               <Text className="text-gray-400 text-xs ml-2">Acceso a inventario restringido</Text>
-            </View>
-          )}
-
-          {/* 3. Módulo DOCUMENTACIÓN */}
-          <MenuCard 
-            title="Biblioteca Digital" 
-            subtitle="Manuales y protocolos"
-            icon="book-open"
-            color="bg-amber-500"
-            onPress={() => console.log('Ir a Docs')}
-          />
-
-          <Text className="text-gray-500 font-bold mb-4 mt-4 uppercase text-xs tracking-wider">
-            Utilidades
+          <Text className="text-gray-400 font-bold mb-4 mt-4 uppercase text-xs tracking-wider ml-1">
+            Operaciones de Cuartel
           </Text>
 
-          {/* Botón rápido para scanner genérico si fuera necesario */}
+          {/* 2. Módulo INVENTARIO (Protegido por Permiso) */}
+          <MenuCard 
+            title="Inventario & Activos" 
+            subtitle={puedeVerInventario ? "Control de stock y movimientos" : "No tienes permisos de acceso"}
+            icon="box"
+            color="bg-bomberil-700"
+            disabled={!puedeVerInventario} // Se deshabilita visualmente si no hay permiso
+            onPress={() => navigation.navigate('InventarioHome')}
+          />
+
+          {/* 3. Módulo DOCUMENTACIÓN (Placeholder) */}
+          <MenuCard 
+            title="Biblioteca Digital" 
+            subtitle={puedeVerDocumentacion ? "Manuales y protocolos operativos" : "No tienes permisos de acceso"}
+            icon="book-open"
+            color="bg-amber-500"
+            disabled={!puedeVerDocumentacion}
+            onPress={() => Alert.alert("Próximamente", "El módulo de biblioteca estará disponible en la siguiente versión.")}
+          />
+
+          <Text className="text-gray-400 font-bold mb-4 mt-4 uppercase text-xs tracking-wider ml-1">
+            Herramientas
+          </Text>
+
+          {/* Botón rápido para scanner genérico */}
           <MenuCard 
             title="Escáner Rápido" 
-            subtitle="Leer QR sin contexto"
+            subtitle="Leer QR sin contexto específico"
             icon="maximize"
             color="bg-gray-800"
-            onPress={() => console.log('Scanner')}
+            onPress={() => Alert.alert("Escáner", "Abriendo cámara para lectura general...")}
           />
 
         </ScrollView>
