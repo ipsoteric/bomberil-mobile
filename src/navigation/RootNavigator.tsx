@@ -15,18 +15,18 @@ export const RootNavigator = () => {
     restoreSession(); // Intenta recuperar sesión al abrir la app
   }, []);
 
-  // BONUS: Bloquear la app si se minimiza (Comportamiento tipo Banco/Authenticator)
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', (nextAppState) => {
-      if (nextAppState === 'background' && isBiometricEnabled && isAuthenticated) {
-        lockApp(); // <--- Se bloquea al salir
-      }
-    });
-
-    return () => {
-      subscription.remove();
-    };
-  }, [isBiometricEnabled, isAuthenticated]);
+  //// BONUS: Bloquear la app si se minimiza (Comportamiento tipo Banco/Authenticator)
+  //useEffect(() => {
+  //  const subscription = AppState.addEventListener('change', (nextAppState) => {
+  //    if (nextAppState === 'background' && isBiometricEnabled && isAuthenticated) {
+  //      lockApp(); // <--- Se bloquea al salir
+  //    }
+  //  });
+  //
+  //  return () => {
+  //    subscription.remove();
+  //  };
+  //}, [isBiometricEnabled, isAuthenticated]);
 
   if (isLoading) {
     return (
