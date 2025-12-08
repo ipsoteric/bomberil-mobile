@@ -49,6 +49,7 @@ interface AuthState {
   // Estados biométricos
   isBiometricSupported: boolean;
   isBiometricEnabled: boolean;
+  isAppLocked: boolean;
 
   // Acciones
   signIn: (data: LoginResponse) => Promise<void>;
@@ -62,6 +63,8 @@ interface AuthState {
   toggleBiometrics: (enabled: boolean) => Promise<boolean>;
   promptBiometrics: () => Promise<boolean>;
   loginWithBiometrics: () => Promise<boolean>;
+  unlockApp: () => Promise<void>;
+  lockApp: () => void;
 }
 
 
@@ -76,6 +79,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isLoading: true,
   isBiometricSupported: false,
   isBiometricEnabled: false,
+  isAppLocked: false,
 
   // --- ACCIÓN: INICIAR SESIÓN ---
   signIn: async (data: LoginResponse) => {
@@ -153,6 +157,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // 1. Solo verificamos si existen los tokens en disco
       const token = await tokenStorage.getToken();
       const refreshToken = await tokenStorage.getRefreshToken();
+      const isBioEnabled = await tokenStorage.getBiometricPreference();
       
       if (!token || !refreshToken) { // Si falta alguno, no podemos restaurar
         set({ isAuthenticated: false, isLoading: false });
@@ -163,8 +168,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // El interceptor de request nuevo (client.ts) se encargará de leer el token del disco
       // si el estado está vacío.
       const response = await client.get(ENDPOINTS.AUTH.ME);
-
       const data = response.data; // { usuario, estacion, permisos, membresia_id }
+
+      // 3. DECISIÓN DE BLOQUEO
+      // Si la biometría está activada, la app inicia BLOQUEADA
+      const shouldLock = isBioEnabled;
 
       // 3. Si todo salió bien, actualizamos el estado
       set({ 
@@ -174,6 +182,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         estacion: data.estacion,
         userPermissions: data.permisos,
         isAuthenticated: true,
+        isAppLocked: shouldLock,
         isLoading: false 
       });
       
@@ -267,7 +276,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       console.log("Error Login Biométrico", error);
       return false;
     }
-  }
+  },
+
+  unlockApp: async () => {
+    // Pedir huella
+    const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Desbloquear Bomberil System',
+        disableDeviceFallback: false,
+    });
+
+    if (result.success) {
+        set({ isAppLocked: false }); // <--- ¡ABRE LA APP!
+    }
+  },
+
+  lockApp: () => {
+    set({ isAppLocked: true });
+  },
 }));
 
 //      // Decodificación simple para restauración optimista
