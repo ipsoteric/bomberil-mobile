@@ -18,14 +18,6 @@ interface EstacionData {
   nombre: string;
 }
 
-// Estructura del Payload del Token (lo que viene encriptado en 'access')
-interface TokenPayload {
-  user_id: number;
-  rut: string;
-  nombre: string;
-  exp: number;
-}
-
 // Tipo para la respuesta completa de tu API
 export interface LoginResponse {
   access: string;
@@ -62,7 +54,6 @@ interface AuthState {
   checkBiometrics: () => Promise<void>;
   toggleBiometrics: (enabled: boolean) => Promise<boolean>;
   promptBiometrics: () => Promise<boolean>;
-  loginWithBiometrics: () => Promise<boolean>;
   unlockApp: () => Promise<void>;
   lockApp: () => void;
 }
@@ -89,12 +80,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await tokenStorage.setRefreshToken(data.refresh);
     }
 
-    // Si la biometría está activada, guardamos el refresh token para usarlo después
-    const isBioEnabled = get().isBiometricEnabled;
-    if (isBioEnabled && data.refresh) {
-      await tokenStorage.setBiometricToken(data.refresh);
-    }
-
     // 2. Guardamos toda la data en memoria (Zustand)
     set({
       token: data.access,
@@ -103,7 +88,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       estacion: data.estacion,
       userPermissions: data.permisos,
       isAuthenticated: true,
-      isLoading: false
+      isLoading: false,
+      isAppLocked: false
     });
   },
 
@@ -141,7 +127,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         user: null, 
         estacion: null, 
         isAuthenticated: false, 
-        userPermissions: [] 
+        userPermissions: [],
+        isAppLocked: false
       });
     }
   },
@@ -182,8 +169,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         estacion: data.estacion,
         userPermissions: data.permisos,
         isAuthenticated: true,
-        isAppLocked: shouldLock,
-        isLoading: false 
+        isLoading: false, 
+        isBiometricEnabled: isBioEnabled,
+        isAppLocked: shouldLock
       });
       
     } catch (error) {
@@ -203,7 +191,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const compatible = await LocalAuthentication.hasHardwareAsync();
     const enrolled = await LocalAuthentication.isEnrolledAsync();
     const isSupported = compatible && enrolled;
-
     // Recuperar preferencia guardada
     const isEnabled = await tokenStorage.getBiometricPreference();
 
@@ -213,20 +200,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   // 2. Activar/Desactivar la opción (Para el perfil)
   toggleBiometrics: async (enable: boolean) => {
     if (enable) {
-      // Si quiere activar, pedimos huella una vez para confirmar que funciona
+      // Confirmar identidad antes de activar
       const success = await get().promptBiometrics();
-      if (!success) return false; // Si falla la huella, no activamos
-
-      // NUEVO: Al activar, guardamos el refresh token actual si existe
-      const currentRefresh = get().refreshToken;
-      if (currentRefresh) {
-        await tokenStorage.setBiometricToken(currentRefresh);
-      }
-    } else {
-      // Si desactiva, borramos el token biométrico por seguridad
-      await tokenStorage.removeBiometricToken();
+      if (!success) return false;
     }
-
+    
+    // Solo guardamos la preferencia, nada de tokens
     await tokenStorage.setBiometricPreference(enable);
     set({ isBiometricEnabled: enable });
     return true;
@@ -247,37 +226,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  // FUNCIÓN MAESTRA
-  loginWithBiometrics: async () => {
-    try {
-      // 1. Pedir Huella
-      const success = await get().promptBiometrics();
-      if (!success) return false; // Usuario canceló o falló
-
-      // 2. Recuperar el token guardado
-      const savedRefreshToken = await tokenStorage.getBiometricToken();
-      if (!savedRefreshToken) {
-        alert("No hay credenciales guardadas. Ingresa con contraseña primero.");
-        return false;
-      }
-
-      // 3. Llamar al Refresh Token Endpoint (que gracias a tu backend, devuelve todo)
-      const response = await client.post(ENDPOINTS.AUTH.REFRESH, {
-        refresh: savedRefreshToken
-      });
-      
-      const data = response.data; // { access, refresh, usuario, estacion... }
-
-      // 4. Iniciar sesión con los datos frescos
-      await get().signIn(data);
-      return true;
-
-    } catch (error) {
-      console.log("Error Login Biométrico", error);
-      return false;
-    }
-  },
-
+  // --- APP LOCKER ---
   unlockApp: async () => {
     // Pedir huella
     const result = await LocalAuthentication.authenticateAsync({
