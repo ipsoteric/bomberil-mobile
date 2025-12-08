@@ -17,10 +17,16 @@ import { useAuthStore } from '@/store/authStore';
 import client from '@/api/client'; // Importamos el cliente configurado
 import { Feather, MaterialIcons } from '@expo/vector-icons'; 
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { AxiosError } from 'axios';
+import { useAuthStore } from '@/store/authStore';
+import client from '@/api/client'; // Importamos el cliente configurado
 import { ENDPOINTS } from '@/api/endpoints';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { AuthStackParamList } from '@/navigation/types';
 
-export default function LoginScreen() {
+
+type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
+
+export default function LoginScreen({ navigation }: Props) {
   const [rut, setRut] = useState(''); // Cambiado de email a rut
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -192,7 +198,9 @@ export default function LoginScreen() {
                     />
                   </TouchableOpacity>
                 </View>
-                <TouchableOpacity className="self-end mt-2">
+                <TouchableOpacity 
+                  onPress={() => navigation.navigate('RecuperarClave')}
+                  className="self-end mt-2">
                   <Text className="text-bomberil-700 font-semibold text-sm">
                     ¿Olvidaste tu contraseña?
                   </Text>
