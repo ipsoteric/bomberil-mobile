@@ -1,5 +1,6 @@
 import axios from 'axios';
-import { useAuthStore } from '@/store/authStore'; // Usando el alias
+import { useAuthStore } from '@/store/authStore';
+import { tokenStorage } from '@/utils/storage';
 import { ENDPOINTS } from './endpoints';
 
 // NOTA IMPORTANTE SOBRE LA URL:
@@ -16,7 +17,24 @@ const client = axios.create({
 });
 
 
-// 1. Interceptor de Request: Inyecta el Access Token actual. Se ejecuta ANTES de que salga cada petición.
+// 1. Interceptor de Request
+client.interceptors.request.use(async (config) => {
+  // Intentamos leer del store
+  let token = useAuthStore.getState().token;
+  
+  // FAILSAFE: Si el store está vacío (arranque), leemos del disco
+  if (!token) {
+    token = await tokenStorage.getToken();
+  }
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+
+// 2. Interceptor de Response
 client.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -28,10 +46,14 @@ client.interceptors.response.use(
 
       try {
         // Obtenemos el refresh token del store
-        const refreshToken = useAuthStore.getState().refreshToken;
+        let refreshToken = useAuthStore.getState().refreshToken;
         
         if (!refreshToken) {
-            throw new Error('No hay refresh token disponible');
+            refreshToken = await tokenStorage.getRefreshToken();
+        }
+        
+        if (!refreshToken) {
+            throw new Error('No hay refresh token disponible ni en memoria ni en disco');
         }
 
         // Llamamos al endpoint de refresh (usamos axios puro para evitar interceptores circulares)
@@ -42,16 +64,8 @@ client.interceptors.response.use(
         // Obtener datos de la respuesta del servidor
         const newData = response.data;
 
-        // Guardamos el nuevo token en el store
-        await useAuthStore.getState().setAccessToken(newData.access);
-
-        // BONUS: Actualizamos también los permisos/estación en el store silenciosamente
-        // Esto mantiene la app al día incluso sin reiniciar
-        useAuthStore.setState({
-            user: newData.usuario,
-            estacion: newData.estacion,
-            userPermissions: newData.permisos
-        });
+        // Guardamos todo en el store para sincronizar
+        useAuthStore.getState().signIn(newData); // Usamos signIn que ya actualiza todo
 
         // Actualizamos el header de la petición original y reintentamos
         originalRequest.headers.Authorization = `Bearer ${newData.access}`;
@@ -59,7 +73,10 @@ client.interceptors.response.use(
 
       } catch (refreshError) {
         // Si el refresh falla (token vencido o inválido), cerramos sesión
-        console.log('Sesión expirada, cerrando sesión...');
+        console.log('Sesión expirada definitivamente, limpiando...');
+        // Evitamos bucles llamando directamente a limpiar storage si el store falla
+        await tokenStorage.removeToken();
+        await tokenStorage.removeRefreshToken();
         useAuthStore.getState().signOut();
         return Promise.reject(refreshError);
       }

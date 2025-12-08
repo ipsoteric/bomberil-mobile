@@ -13,8 +13,7 @@ import {
   StatusBar,
   Alert
 } from 'react-native';
-import { useAuthStore } from '@/store/authStore';
-import client from '@/api/client'; // Importamos el cliente configurado
+import { AxiosError } from 'axios';
 import { Feather, MaterialIcons } from '@expo/vector-icons'; 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/authStore';
