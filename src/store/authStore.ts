@@ -150,6 +150,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   // --- ACCIÓN: RESTAURAR SESIÓN (Al abrir la App) ---
   restoreSession: async () => {
     try {
+      // 1. Solo verificamos si existen los tokens en disco
       const token = await tokenStorage.getToken();
       const refreshToken = await tokenStorage.getRefreshToken();
       
@@ -158,26 +159,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return;
       }
 
-      // 2. Lo ponemos en el estado temporalmente para que el interceptor de axios lo use
-      set({ token, refreshToken });
-
-      // 3. Llamamos a AUTH/ME para validar si el token sigue vivo 
-      // y obtener DATOS FRESCOS del backend.
+      // 2. Llamamos DIRECTAMENTE a Auth Me.
+      // El interceptor de request nuevo (client.ts) se encargará de leer el token del disco
+      // si el estado está vacío.
       const response = await client.get(ENDPOINTS.AUTH.ME);
-
-      // NOTA: Gracias al interceptor de refresh, si el token estaba vencido,
-      // client.ts ya lo refrescó internamente antes de llegar aquí.
 
       const data = response.data; // { usuario, estacion, permisos, membresia_id }
 
-      // 4. Actualizamos el store con la verdad absoluta del servidor
+      // 3. Si todo salió bien, actualizamos el estado
       set({ 
+        token, // Token del disco (o el renovado si el interceptor actuó)
+        refreshToken, 
         user: data.usuario,
         estacion: data.estacion,
         userPermissions: data.permisos,
         isAuthenticated: true,
         isLoading: false 
       });
+      
     } catch (error) {
       console.log('Error restaurando sesión (Token inválido o sin internet):', error);
       
