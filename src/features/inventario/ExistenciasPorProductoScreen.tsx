@@ -11,13 +11,23 @@ type Props = NativeStackScreenProps<AppStackParamList, 'ExistenciasPorProducto'>
 
 export default function ExistenciasPorProductoScreen({ navigation, route }: Props) {
   const { productoId, nombreProducto } = route.params;
-  const { existenciasProducto, isLoading, fetchExistenciasPorProducto, clearExistenciasProducto } = useInventoryStore();
+  const { existenciasProducto, isLoading, fetchExistenciasPorProducto, clearExistenciasProducto, fetchExistenciaByQR } = useInventoryStore();
 
   useEffect(() => {
     fetchExistenciasPorProducto(productoId);
     // Limpiar al salir para evitar parpadeos en futuras navegaciones
     return () => clearExistenciasProducto();
   }, [productoId]);
+
+  const handleItemPress = async (codigo: string) => {
+    // Esto activará el isLoading global, mostrando el spinner brevemente
+    const success = await fetchExistenciaByQR(codigo);
+    
+    if (success) {
+      navigation.navigate('DetalleExistencia', { sku: codigo });
+    }
+  };
+
 
   const renderItem = ({ item }: { item: Existencia }) => {
     // Definir color según estado para un indicador visual rápido
@@ -27,7 +37,7 @@ export default function ExistenciasPorProductoScreen({ navigation, route }: Prop
     return (
       <TouchableOpacity 
         className="bg-white p-4 mb-3 rounded-xl border border-gray-100 shadow-sm flex-row items-center"
-        onPress={() => navigation.navigate('DetalleExistencia', { sku: item.codigo })} // Navegamos al detalle final usando el código (o SKU si prefieres)
+        onPress={() => handleItemPress(item.codigo)}
       >
         <View className="mr-3 bg-gray-50 p-3 rounded-lg">
            {/* Icono diferenciado si es Activo (Unitario) o Lote (Caja) */}
