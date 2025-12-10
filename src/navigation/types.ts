@@ -13,6 +13,7 @@ export type AppStackParamList = {
   InventarioHome: undefined; // Módulo Inventario
   ScannerInventario: undefined;
   CatalogoLocal: undefined;
+  ExistenciasPorProducto: { productoId: number; nombreProducto: string };
   DetalleExistencia: { sku: string }; // Ejemplo de paso de parámetros
   VoluntariosHome: undefined; // Módulo Voluntarios
   FichaMedica: { voluntarioId?: number }; // Módulo Médico

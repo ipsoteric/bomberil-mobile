@@ -29,7 +29,10 @@ export default function CatalogoLocalScreen({ navigation }: Props) {
   const renderItem = ({ item }: { item: ProductoStock }) => (
     <TouchableOpacity 
       className="bg-white p-4 mb-3 rounded-2xl border border-gray-100 shadow-sm flex-row items-center"
-      onPress={() => Alert.alert("Detalle de Producto", "La vista detallada del producto (y sus existencias individuales) estará disponible en la próxima actualización.")}
+      onPress={() => navigation.navigate('ExistenciasPorProducto', { 
+        productoId: item.id, 
+        nombreProducto: item.nombre 
+      })}
     >
       {/* Icono o Imagen */}
       <View className="mr-4">

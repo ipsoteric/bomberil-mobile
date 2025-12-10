@@ -8,6 +8,7 @@ import DashboardScreen from '@/features/dashboard/DashboardScreen'; // El Portal
 import InventarioScreen from '@/features/inventario/InventarioScreen';
 import ScannerScreen from '@/features/inventario/ScannerScreen';
 import CatalogoLocalScreen from '@/features/inventario/CatalogoLocalScreen';
+import ExistenciasPorProductoScreen from '@/features/inventario/ExistenciasPorProductoScreen';
 import ExistenciaDetailScreen from '@/features/inventario/ExistenciaDetailScreen';
 import PerfilScreen from '@/features/perfil/PerfilScreen';
 
@@ -41,6 +42,11 @@ export const AppNavigator = () => {
       <Stack.Screen 
         name="CatalogoLocal" 
         component={CatalogoLocalScreen} 
+        options={{ headerShown: false }} 
+      />
+      <Stack.Screen 
+        name="ExistenciasPorProducto" 
+        component={ExistenciasPorProductoScreen} 
         options={{ headerShown: false }} 
       />
       <Stack.Screen 
