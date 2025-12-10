@@ -7,7 +7,7 @@ export const ENDPOINTS = {
     PASSWORD_RESET: 'auth/password_reset/',
   },
   INVENTARIO: {
-    EXISTENCIA_BUSCAR: (query: string) => `inventario/existencias/buscar/?q=${query}`,
+    EXISTENCIA_BUSCAR: (codigo: string) => `gestion_inventario/existencias/buscar/?codigo=${codigo}`,
     PRODUCTOS: 'inventario/productos/',
     MOVIMIENTOS: 'inventario/movimientos/',
     EXISTENCIAS: 'inventario/existencias/',

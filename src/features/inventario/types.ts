@@ -1,35 +1,48 @@
-export type TipoExistencia = 'ACTIVO' | 'LOTE_INSUMO';
-
-// Basado en las reglas de negocio: Ubicaciones pueden ser Vehículos o Áreas
-export interface Ubicacion {
+export interface Movimiento {
   id: number;
-  nombre: string;
-  tipo: 'AREA' | 'VEHICULO' | 'ADMINISTRATIVA';
+  fecha: string; // ISO date
+  tipo: string; // "ENTRADA", "SALIDA", etc.
+  usuario: string;
+  origen: string;
+  destino: string;
 }
 
-export interface ProductoCatalogo {
-  sku: string;
-  nombre: string;
-  es_serializado: boolean; // Define si es Activo
-  es_fungible: boolean;    // Define si es Lote
-  unidad_medida?: string;
+export interface UsoStats {
+  total_horas: number;
+  ultimo_uso: string | null;
+  total_registros: number;
 }
 
+export interface MantenimientoStats {
+  ordenes_activas_count: number;
+  en_taller: boolean;
+}
+
+// Interfaz unificada basada en tu respuesta del backend (data_response)
 export interface Existencia {
+  tipo_existencia: 'ACTIVO' | 'LOTE'; // Backend envía esto ahora
   id: number;
-  tipo: TipoExistencia;
-  codigo_qr: string; // El identificador que vendrá en el QR
-  producto: ProductoCatalogo;
-  ubicacion_actual: Ubicacion;
-  estado: string; // DISPONIBLE, EN_PRESTAMO, etc.
-  
-  // Datos específicos de ACTIVO (Serializado)
-  numero_serie?: string;
-  marca?: string;
+  sku: string;
+  codigo: string;
+  nombre: string;
+  marca: string;
+  ubicacion: string;
+  estado: string;
+  estado_color: string; // "green" | "red" | "orange"
+  imagen: string | null;
+
+  // Específicos de ACTIVO
   modelo?: string;
-  
-  // Datos específicos de LOTE (Fungible)
+  serie?: string;
+  uso_stats?: UsoStats | null;
+  mantenimiento?: MantenimientoStats | null;
+
+  // Específicos de LOTE
   cantidad_actual?: number;
-  fecha_vencimiento?: string; // ISO Date
+  unidad_medida?: string;
+  vencimiento?: string | null;
   lote_fabricacion?: string;
+
+  // Historial
+  historial_movimientos: Movimiento[];
 }
