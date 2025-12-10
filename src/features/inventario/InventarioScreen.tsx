@@ -103,7 +103,10 @@ export default function InventarioScreen({ navigation }: Props) {
               <Text className="text-gray-700 font-bold mt-2">Buscar Manual</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 w-[48%] items-center">
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('CatalogoLocal')} // <--- Conexión
+              className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 w-[48%] items-center"
+            >
               <Feather name="list" size={24} color="#4b5563" />
               <Text className="text-gray-700 font-bold mt-2">Catálogo Local</Text>
             </TouchableOpacity>

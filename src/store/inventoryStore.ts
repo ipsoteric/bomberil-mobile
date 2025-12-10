@@ -6,16 +6,19 @@ import { Alert } from 'react-native';
 
 interface InventoryState {
   currentExistencia: Existencia | null;
+  existencias: Existencia[];
   isLoading: boolean;
   error: string | null;
 
   // Acciones
   fetchExistenciaByQR: (codigo: string) => Promise<boolean>;
+  fetchExistencias: () => Promise<void>;
   clearCurrentExistencia: () => void;
 }
 
 export const useInventoryStore = create<InventoryState>((set) => ({
   currentExistencia: null,
+  existencias: [],
   isLoading: false,
   error: null,
 
@@ -46,6 +49,20 @@ export const useInventoryStore = create<InventoryState>((set) => ({
       set({ error: msg, isLoading: false, currentExistencia: null });
       Alert.alert("Error", msg);
       return false;
+    }
+  },
+
+  fetchExistencias: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await client.get(ENDPOINTS.INVENTARIO.EXISTENCIAS);
+      // Asumiendo que la API devuelve una lista directa o paginada en results
+      const data = Array.isArray(response.data) ? response.data : response.data.results || [];
+      
+      set({ existencias: data, isLoading: false });
+    } catch (error: any) {
+      console.log("Error fetching list:", error);
+      set({ error: "No se pudo cargar el inventario", isLoading: false });
     }
   },
 
