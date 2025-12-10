@@ -10,9 +10,7 @@ type Props = NativeStackScreenProps<AppStackParamList, 'InventarioHome'>;
 export default function InventarioScreen({ navigation }: Props) {
   
   const handleScanPress = () => {
-    // TODO: En el siguiente commit se conectará esto a la pantalla de cámara real
-    // navigation.navigate('ScannerInventario'); 
-    console.log("Abrir escáner");
+    navigation.navigate('ScannerInventario');
   };
 
   return (
