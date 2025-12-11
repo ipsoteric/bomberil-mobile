@@ -59,3 +59,26 @@ export interface ProductoStock {
   imagen: string | null;
   critico: boolean; // Para pintar en rojo si el stock es bajo
 }
+
+// Estructura de una línea de detalle en la recepción
+export interface DetalleRecepcionItem {
+  producto_id: number;
+  nombre_producto?: string; // Auxiliar para mostrar en la UI antes de enviar
+  compartimento_destino_id: number | string; // ID o UUID según tu backend
+  cantidad: number;
+  costo_unitario: number;
+  
+  // Opcionales según tipo
+  numero_serie?: string;      // Solo Activos
+  fecha_fabricacion?: string; // Solo Activos (YYYY-MM-DD)
+  numero_lote?: string;       // Solo Lotes
+  fecha_vencimiento?: string; // Solo Lotes (YYYY-MM-DD)
+}
+
+// Estructura del Payload completo para el POST
+export interface RecepcionPayload {
+  proveedor_id: number;
+  fecha_recepcion: string; // YYYY-MM-DD
+  notas?: string;
+  detalles: DetalleRecepcionItem[];
+}

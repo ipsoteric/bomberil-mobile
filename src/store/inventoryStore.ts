@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import client from '@/api/client';
 import { ENDPOINTS } from '@/api/endpoints';
-import { Existencia, ProductoStock } from '@/features/inventario/types';
+import { Existencia, ProductoStock, RecepcionPayload } from '@/features/inventario/types';
 import { Alert } from 'react-native';
 
 interface InventoryState {
@@ -15,6 +15,7 @@ interface InventoryState {
   fetchExistenciaByQR: (codigo: string) => Promise<boolean>;
   fetchCatalogo: (search?: string) => Promise<void>;
   fetchExistenciasPorProducto: (productoId: number) => Promise<void>;
+  recepcionarStock: (payload: RecepcionPayload) => Promise<boolean>;
   clearCurrentExistencia: () => void;
   clearExistenciasProducto: () => void;
 }
@@ -79,6 +80,27 @@ export const useInventoryStore = create<InventoryState>((set) => ({
     } catch (error: any) {
       console.log("Error fetching items by product:", error);
       set({ error: "No se pudieron cargar las existencias.", isLoading: false });
+    }
+  },
+
+  recepcionarStock: async (payload: RecepcionPayload) => {
+    set({ isLoading: true, error: null });
+    try {
+      // POST al endpoint transaccional
+      await client.post(ENDPOINTS.INVENTARIO.RECEPCION_STOCK, payload);
+      
+      // Si todo sale bien
+      set({ isLoading: false });
+      return true;
+      
+    } catch (error: any) {
+      console.log("Error en recepción:", error);
+      // Extraemos el mensaje de error útil del backend (ej: "Falta proveedor_id")
+      const msg = error.response?.data?.detail || error.message || "Error al procesar la recepción.";
+      
+      set({ error: msg, isLoading: false });
+      Alert.alert("Error de Recepción", msg);
+      return false;
     }
   },
 
