@@ -6,6 +6,7 @@ import { useLoansStore } from '@/store/loansStore';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppStackParamList } from '@/navigation/types';
 import { ItemPrestable, ItemPrestamoPayload } from '@/features/inventario/types';
+import { useAuthStore } from '@/store/authStore';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'CrearPrestamo'>;
 
@@ -17,7 +18,8 @@ interface CarritoItem extends ItemPrestable {
 export default function CrearPrestamoScreen({ navigation }: Props) {
   const { 
     destinatarios, itemsPrestables, isLoading, 
-    fetchDestinatarios, fetchItemsPrestables, crearPrestamo, clearItemsPrestables 
+    fetchDestinatarios, fetchItemsPrestables, crearPrestamo, clearItemsPrestables,
+    fetchItemByCode
   } = useLoansStore();
 
   // Estado Destinatario
@@ -28,9 +30,14 @@ export default function CrearPrestamoScreen({ navigation }: Props) {
 
   // Estado General
   const [notas, setNotas] = useState('');
-
   // Estado Carrito
   const [carrito, setCarrito] = useState<CarritoItem[]>([]);
+  const { estacion } = useAuthStore();
+
+  // Estados Smart Search
+  const [showSmartModal, setShowSmartModal] = useState(false);
+  const [smartInput, setSmartInput] = useState('');
+  const [searchType, setSearchType] = useState<'ACT' | 'LOT'>('ACT');
   
   // Estado Modal Búsqueda Ítems
   const [showItemModal, setShowItemModal] = useState(false);
@@ -50,26 +57,68 @@ export default function CrearPrestamoScreen({ navigation }: Props) {
     return () => clearTimeout(timeout);
   }, [searchQuery, showItemModal]);
 
+  // Lógica de Agregar al Carrito (Reutilizada y mejorada)
   const handleAddItem = (item: ItemPrestable) => {
-    // Verificar si ya está en el carrito
     const existe = carrito.find(c => c.id === item.id);
     if (existe) {
-      Alert.alert("Ya agregado", "Este ítem ya está en la lista.");
+      Alert.alert("Ya agregado", `El ítem ${item.codigo} ya está en la lista.`);
+      return;
+    }
+    
+    // Validación stock 0 (Backend no debería devolverlo, pero por seguridad)
+    if (item.cantidad_disponible <= 0) {
+      Alert.alert("Sin Stock", "Este ítem no tiene unidades disponibles para prestar.");
       return;
     }
 
-    // Agregar al carrito
-    // Si es Activo, cantidad es 1 fija. Si es Lote, pediremos cantidad luego (por ahora default 1)
     const nuevoItem: CarritoItem = {
       ...item,
       cantidad_seleccionada: 1
     };
     
     setCarrito([...carrito, nuevoItem]);
+    
+    // Cerrar modales si están abiertos
     setShowItemModal(false);
+    setShowSmartModal(false);
+    setSmartInput('');
     setSearchQuery('');
     clearItemsPrestables();
   };
+
+  // --- LÓGICA SMART SEARCH & SCANNER ---
+  const formatCode = (input: string): string => {
+    const raw = input.trim().toUpperCase();
+    if (raw.includes('-') && raw.length > 8) return raw; // Ya es código completo
+
+    // Construir código: {COD_ESTACION}-{TIPO}-{NUMERO}
+    // Ajusta 'estacion?.codigo' según cómo lo guardes en tu authStore (string)
+    const stationCode = estacion?.codigo || `Estacion sin código`;
+    const numberPart = raw.padStart(5, '0');
+    
+    return `${stationCode}-${searchType}-${numberPart}`;
+  };
+
+  const handleSmartSearch = async () => {
+    if (!smartInput.trim()) return;
+
+    const code = formatCode(smartInput);
+    const item = await fetchItemByCode(code);
+
+    if (item) {
+      handleAddItem(item);
+    } else {
+      Alert.alert("No encontrado", `No se encontró disponible el ítem: ${code}`);
+    }
+  };
+
+  // Mock para el Escáner (En producción, conectarías esto a la respuesta de la cámara)
+  const handleScanSimulation = () => {
+    Alert.alert("Escáner", "Aquí se abriría la cámara. Al leer un QR, llamaría a fetchItemByCode(qrContent).");
+    // Ejemplo: navigation.navigate('ScannerInventario', { onScan: (code) => handleSmartSearch(code) });
+  };
+
+
 
   const updateCantidadLote = (id: string, cantidad: string, max: number) => {
     const val = parseInt(cantidad);
@@ -199,23 +248,45 @@ export default function CrearPrestamoScreen({ navigation }: Props) {
         </View>
 
         {/* SECCIÓN 2: ÍTEMS */}
-        <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-xs font-bold text-gray-400 uppercase">Ítems a Prestar ({carrito.length})</Text>
-          <TouchableOpacity 
-            onPress={() => setShowItemModal(true)}
-            className="flex-row items-center bg-blue-50 px-3 py-1 rounded-full"
-          >
-            <Feather name="plus" size={16} color="#2563eb" />
-            <Text className="text-blue-700 font-bold ml-1 text-xs">Agregar</Text>
-          </TouchableOpacity>
+        <Text className="text-xs font-bold text-gray-400 uppercase mb-2">Ítems a Prestar ({carrito.length})</Text>
+        
+        <View className="flex-row justify-between mb-4">
+            {/* Botón ESCÁNER */}
+            <TouchableOpacity 
+                onPress={handleScanSimulation} // Conectar navegación real aquí
+                className="flex-1 bg-gray-800 p-4 rounded-xl mr-2 flex-row justify-center items-center shadow-sm"
+            >
+                <Feather name="camera" size={20} color="white" />
+                <Text className="text-white font-bold ml-2">Escanear</Text>
+            </TouchableOpacity>
+
+            {/* Botón MANUAL INTELIGENTE */}
+            <TouchableOpacity 
+                onPress={() => setShowSmartModal(true)}
+                className="flex-1 bg-white border border-gray-200 p-4 rounded-xl mr-2 flex-row justify-center items-center shadow-sm"
+            >
+                <Feather name="hash" size={20} color="#374151" />
+                <Text className="text-gray-700 font-bold ml-2">Manual</Text>
+            </TouchableOpacity>
+
+            {/* Botón CATÁLOGO (Búsqueda por nombre) */}
+            <TouchableOpacity 
+                onPress={() => setShowItemModal(true)}
+                className="bg-white border border-gray-200 p-4 rounded-xl flex-row justify-center items-center shadow-sm"
+            >
+                <Feather name="list" size={20} color="#374151" />
+            </TouchableOpacity>
         </View>
         
+        {/* LISTA CARRITO (Igual que antes) */}
         {carrito.length === 0 ? (
-           <View className="border-2 border-dashed border-gray-200 rounded-xl p-6 items-center mb-4">
-             <Text className="text-gray-400 text-sm">No hay ítems en la lista.</Text>
+           <View className="border-2 border-dashed border-gray-200 rounded-xl p-8 items-center mb-4 bg-gray-50/50">
+             <Feather name="shopping-cart" size={32} color="#d1d5db" />
+             <Text className="text-gray-400 text-sm mt-2">Lista vacía</Text>
            </View>
         ) : (
            carrito.map((item) => (
+             /* ... (Renderizado de ítem carrito igual que Commit 24) ... */
              <View key={item.id} className="bg-white p-3 mb-2 rounded-xl border border-gray-100 flex-row items-center">
                 <View className="mr-3 bg-gray-50 p-2 rounded-lg">
                    <Feather name={item.tipo === 'ACTIVO' ? 'tag' : 'box'} size={20} color="#4b5563" />
@@ -224,8 +295,6 @@ export default function CrearPrestamoScreen({ navigation }: Props) {
                    <Text className="font-bold text-gray-800 text-sm">{item.nombre}</Text>
                    <Text className="text-xs text-gray-400">{item.codigo}</Text>
                 </View>
-                
-                {/* Control Cantidad */}
                 <View className="flex-row items-center mx-2">
                   {item.tipo === 'LOTE' ? (
                      <View className="flex-row items-center border border-gray-200 rounded-lg">
@@ -241,7 +310,6 @@ export default function CrearPrestamoScreen({ navigation }: Props) {
                      <Text className="font-bold text-gray-500 mr-2">1 un.</Text>
                   )}
                 </View>
-
                 <TouchableOpacity onPress={() => handleRemoveItem(item.id)}>
                    <Feather name="trash-2" size={20} color="#ef4444" />
                 </TouchableOpacity>
@@ -309,47 +377,68 @@ export default function CrearPrestamoScreen({ navigation }: Props) {
          </SafeAreaView>
       </Modal>
 
-      {/* --- MODAL BUSCAR ÍTEMS --- */}
-      <Modal visible={showItemModal} animationType="fade" transparent>
-         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 bg-black/50 justify-end">
-            <View className="bg-white h-[85%] rounded-t-3xl overflow-hidden">
-               <View className="px-4 py-3 border-b border-gray-100 flex-row justify-between items-center bg-gray-50">
-                  <Text className="text-lg font-bold">Buscar Existencias</Text>
-                  <TouchableOpacity onPress={() => setShowItemModal(false)}>
-                     <Feather name="x" size={24} color="gray" />
-                  </TouchableOpacity>
-               </View>
-               
-               <View className="p-4 border-b border-gray-100">
-                  <View className="flex-row bg-gray-100 rounded-xl px-3 py-2 items-center">
-                     <Feather name="search" size={20} color="gray" />
-                     <TextInput 
-                        className="flex-1 ml-2 text-base"
-                        placeholder="Nombre, código o marca..."
-                        value={searchQuery}
-                        onChangeText={setSearchQuery}
-                        autoFocus
-                     />
-                  </View>
-                  <Text className="text-xs text-gray-400 mt-2 text-center">Escribe al menos 3 letras para buscar</Text>
-               </View>
+      {/* --- MODAL SMART SEARCH (Manual) --- */}
+      <Modal animationType="slide" transparent={true} visible={showSmartModal} onRequestClose={() => setShowSmartModal(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1 justify-end">
+          <View className="flex-1 bg-black/50">
+            <TouchableOpacity className="flex-1" onPress={() => setShowSmartModal(false)} />
+            <View className="bg-white rounded-t-3xl p-6 pb-10 shadow-xl">
+              
+              <View className="flex-row justify-between items-center mb-4">
+                <Text className="text-xl font-bold text-gray-800">Agregar por Código</Text>
+                <TouchableOpacity onPress={() => setShowSmartModal(false)} className="p-2 bg-gray-100 rounded-full">
+                  <Feather name="x" size={20} color="#4b5563" />
+                </TouchableOpacity>
+              </View>
 
-               {isLoading ? (
-                  <ActivityIndicator size="large" className="mt-10" />
-               ) : (
-                  <FlatList 
-                     data={itemsPrestables}
-                     keyExtractor={(item) => item.id}
-                     renderItem={renderSearchItem}
-                     ListEmptyComponent={
-                        <Text className="text-center text-gray-400 mt-10">
-                           {searchQuery.length > 2 ? 'No se encontraron resultados disponibles.' : ''}
-                        </Text>
-                     }
-                  />
-               )}
+              {/* Selector Tipo */}
+              <View className="flex-row bg-gray-100 p-1 rounded-xl mb-4">
+                <TouchableOpacity 
+                  onPress={() => setSearchType('ACT')}
+                  className={`flex-1 py-2 rounded-lg items-center ${searchType === 'ACT' ? 'bg-white shadow-sm' : ''}`}
+                >
+                  <Text className={`font-bold ${searchType === 'ACT' ? 'text-blue-800' : 'text-gray-400'}`}>Activo (ACT)</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  onPress={() => setSearchType('LOT')}
+                  className={`flex-1 py-2 rounded-lg items-center ${searchType === 'LOT' ? 'bg-white shadow-sm' : ''}`}
+                >
+                  <Text className={`font-bold ${searchType === 'LOT' ? 'text-orange-800' : 'text-gray-400'}`}>Lote (LOT)</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Input Numérico */}
+              <View className="flex-row items-center border border-gray-300 rounded-xl px-4 py-3 bg-gray-50 mb-6 focus:border-blue-700 focus:bg-white">
+                <Text className="text-gray-400 font-bold mr-2 text-lg">
+                    {estacion?.codigo || 'E00X'}-{searchType}-
+                </Text>
+                <TextInput
+                  className="flex-1 text-xl font-bold text-gray-900"
+                  placeholder="00000"
+                  value={smartInput}
+                  onChangeText={setSmartInput}
+                  keyboardType="numeric"
+                  autoFocus={true}
+                  maxLength={5}
+                />
+              </View>
+
+              <TouchableOpacity 
+                onPress={handleSmartSearch}
+                disabled={isLoading}
+                className={`w-full py-4 rounded-xl flex-row justify-center items-center ${isLoading ? 'bg-gray-400' : 'bg-gray-900'}`}
+              >
+                {isLoading ? <ActivityIndicator color="white" /> : (
+                  <>
+                    <Feather name="plus-circle" size={20} color="white" />
+                    <Text className="text-white font-bold text-lg ml-2">Agregar al Préstamo</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
             </View>
-         </KeyboardAvoidingView>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
 
     </SafeAreaView>

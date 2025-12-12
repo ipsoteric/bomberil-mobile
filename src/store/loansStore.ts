@@ -17,6 +17,7 @@ interface LoansState {
   fetchDestinatarios: () => Promise<void>;
   fetchItemsPrestables: (query: string) => Promise<void>;
   fetchDetallePrestamo: (id: number) => Promise<void>;
+  fetchItemByCode: (code: string) => Promise<ItemPrestable | null>;
   
   // Acciones de Escritura
   crearPrestamo: (payload: CrearPrestamoPayload) => Promise<boolean>;
@@ -57,11 +58,28 @@ export const useLoansStore = create<LoansState>((set, get) => ({
 
   fetchItemsPrestables: async (query: string) => {
     if (!query) return;
-    set({ isLoading: true }); // Loading local para el buscador
+    set({ isLoading: true });
     try {
       const response = await client.get(ENDPOINTS.INVENTARIO.PRESTAMOS_BUSCAR_ITEMS(query));
-      // Asumimos que devuelve una lista directa
-      set({ itemsPrestables: response.data, isLoading: false });
+      
+      // FIX: Acceder a .items dentro de data
+      const results = response.data.items || []; 
+      
+      // Mapear al formato interno ItemPrestable si es necesario
+      // El backend devuelve 'real_id', 'texto_mostrar', 'max_qty'.
+      // Nuestra interfaz ItemPrestable espera: id, codigo, nombre, tipo, ubicacion, cantidad_disponible
+      // Hacemos un mapeo rápido para adaptar la respuesta del backend al frontend
+      const mappedItems: ItemPrestable[] = results.map((i: any) => ({
+        id: i.real_id, // Usamos el UUID real
+        tipo: i.tipo === 'activo' ? 'ACTIVO' : 'LOTE',
+        codigo: i.codigo,
+        nombre: i.nombre,
+        ubicacion: 'N/A', // El backend actual no devuelve ubicación explícita en este endpoint, podemos ajustarlo luego
+        cantidad_disponible: i.max_qty,
+        marca: ''
+      }));
+
+      set({ itemsPrestables: mappedItems, isLoading: false });
     } catch (error) {
       console.log("Error buscando items prestables:", error);
       set({ itemsPrestables: [], isLoading: false });
@@ -76,6 +94,42 @@ export const useLoansStore = create<LoansState>((set, get) => ({
     } catch (error: any) {
       console.log("Error fetching loan detail:", error);
       set({ error: "No se pudo cargar el detalle.", isLoading: false });
+    }
+  },
+
+  fetchItemByCode: async (code: string) => {
+    set({ isLoading: true });
+    try {
+      const response = await client.get(ENDPOINTS.INVENTARIO.PRESTAMOS_BUSCAR_ITEMS(code));
+      
+      // FIX: Acceder a .items
+      const results = response.data.items || [];
+
+      if (Array.isArray(results) && results.length > 0) {
+        // Buscar coincidencia exacta
+        const exactMatch = results.find((i: any) => i.codigo.toUpperCase() === code.toUpperCase());
+        const found = exactMatch || results[0];
+
+        // Mapear al formato frontend
+        const mappedItem: ItemPrestable = {
+            id: found.real_id,
+            tipo: found.tipo === 'activo' ? 'ACTIVO' : 'LOTE',
+            codigo: found.codigo,
+            nombre: found.nombre,
+            ubicacion: 'N/A',
+            cantidad_disponible: found.max_qty
+        };
+
+        set({ isLoading: false });
+        return mappedItem;
+      }
+      
+      set({ isLoading: false });
+      return null;
+    } catch (error) {
+      console.log("Error fetching item by code:", error);
+      set({ isLoading: false });
+      return null;
     }
   },
 
