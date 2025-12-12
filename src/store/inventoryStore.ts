@@ -9,7 +9,8 @@ import {
   Ubicacion, 
   Compartimento, 
   AjusteStockPayload,
-  ConsumoStockPayload
+  ConsumoStockPayload,
+  BajaPayload
 } from '@/features/inventario/types';
 import { Alert } from 'react-native';
 
@@ -31,6 +32,7 @@ interface InventoryState {
   recepcionarStock: (payload: RecepcionPayload) => Promise<boolean>;
   ajustarStock: (payload: AjusteStockPayload) => Promise<boolean>;
   consumirStock: (payload: ConsumoStockPayload) => Promise<boolean>;
+  darDeBajaExistencia: (notas: string) => Promise<boolean>;
   clearCurrentExistencia: () => void;
   clearExistenciasProducto: () => void;
 
@@ -166,6 +168,38 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     } catch (error: any) {
       console.log("Error consumiendo stock:", error);
       const msg = error.response?.data?.detail || "Error al registrar el consumo.";
+      set({ error: msg, isLoading: false });
+      Alert.alert("Error", msg);
+      return false;
+    }
+  },
+
+  darDeBajaExistencia: async (notas: string) => {
+    const current = get().currentExistencia;
+    if (!current) return false;
+
+    set({ isLoading: true, error: null });
+
+    try {
+      // Mapeo de tipos Frontend -> Backend
+      const tipoBackend = current.tipo_existencia === 'LOTE' ? 'LOTE' : 'ACTIVO';
+
+      const payload: BajaPayload = {
+        id: current.id.toString(),
+        tipo: tipoBackend as 'ACTIVO' | 'LOTE',
+        notas: notas
+      };
+
+      await client.post(ENDPOINTS.INVENTARIO.BAJA_EXISTENCIA, payload);
+      
+      // Recargar datos para ver el nuevo estado "DE BAJA"
+      await get().fetchExistenciaByQR(current.codigo);
+      
+      set({ isLoading: false });
+      return true;
+    } catch (error: any) {
+      console.log("Error dando de baja:", error);
+      const msg = error.response?.data?.detail || "Error al procesar la baja.";
       set({ error: msg, isLoading: false });
       Alert.alert("Error", msg);
       return false;

@@ -115,3 +115,9 @@ export interface ConsumoStockPayload {
   cantidad: number;
   notas?: string;
 }
+
+export interface BajaPayload {
+  tipo: 'ACTIVO' | 'LOTE'; // El backend espera explícitamente "LOTE"
+  id: string;
+  notas: string;
+}
