@@ -11,14 +11,14 @@ export type AppStackParamList = {
   Dashboard: undefined; // "Portal" 
   SeleccionEstacion: undefined; // Necesario porque el usuario accede vía Membresía
   InventarioHome: undefined; // Módulo Inventario
-  ScannerInventario: undefined;
+  ScannerInventario: { returnScreen?: keyof AppStackParamList } | undefined;
   CatalogoLocal: undefined;
   ExistenciasPorProducto: { productoId: number; nombreProducto: string };
   DetalleExistencia: { sku: string }; // Ejemplo de paso de parámetros
   RecepcionStock: undefined;
 
   PrestamosHome: undefined;
-  CrearPrestamo: undefined; 
+  CrearPrestamo: { scannedCode?: string } | undefined;
   DetallePrestamo: { id: number };
   
   VoluntariosHome: undefined; // Módulo Voluntarios

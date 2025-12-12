@@ -15,7 +15,7 @@ interface CarritoItem extends ItemPrestable {
   cantidad_seleccionada: number;
 }
 
-export default function CrearPrestamoScreen({ navigation }: Props) {
+export default function CrearPrestamoScreen({ navigation, route }: Props) {
   const { 
     destinatarios, itemsPrestables, isLoading, 
     fetchDestinatarios, fetchItemsPrestables, crearPrestamo, clearItemsPrestables,
@@ -42,6 +42,36 @@ export default function CrearPrestamoScreen({ navigation }: Props) {
   // Estado Modal Búsqueda Ítems
   const [showItemModal, setShowItemModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+
+
+  // ESCUCHA DE RETORNO DEL ESCÁNER
+  useEffect(() => {
+    if (route.params?.scannedCode) {
+      const code = route.params.scannedCode;
+      
+      // Limpiamos el parámetro para que no se dispare de nuevo accidentalmente
+      navigation.setParams({ scannedCode: undefined });
+      
+      console.log("Código recibido del escáner:", code);
+      processScannedCode(code);
+    }
+  }, [route.params?.scannedCode]);
+
+  // FUNCIÓN PROCESADORA (Reutiliza tu lógica de búsqueda)
+  const processScannedCode = async (code: string) => {
+    const item = await fetchItemByCode(code);
+    
+    if (item) {
+      handleAddItem(item);
+      // Feedback visual opcional
+      // Alert.alert("Agregado", `${item.nombre} agregado al carrito.`);
+    } else {
+      Alert.alert("No encontrado", `El código escaneado no está disponible: ${code}`);
+    }
+  };
+
+
 
   useEffect(() => {
     fetchDestinatarios();
@@ -253,7 +283,7 @@ export default function CrearPrestamoScreen({ navigation }: Props) {
         <View className="flex-row justify-between mb-4">
             {/* Botón ESCÁNER */}
             <TouchableOpacity 
-                onPress={handleScanSimulation} // Conectar navegación real aquí
+                onPress={() => navigation.navigate('ScannerInventario', { returnScreen: 'CrearPrestamo' })} // <--- CAMBIO AQUÍ
                 className="flex-1 bg-gray-800 p-4 rounded-xl mr-2 flex-row justify-center items-center shadow-sm"
             >
                 <Feather name="camera" size={20} color="white" />
