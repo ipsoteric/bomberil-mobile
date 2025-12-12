@@ -12,6 +12,7 @@ export const ENDPOINTS = {
     EXISTENCIAS_POR_PRODUCTO: (productoId: number) => `gestion_inventario/existencias/?producto=${productoId}`,
     RECEPCION_STOCK: 'gestion_inventario/movimientos/recepcion/',
     AJUSTAR_STOCK: 'gestion_inventario/movimientos/ajustar/',
+    CONSUMIR_STOCK: 'gestion_inventario/movimientos/consumir/',
 
     // Rutas Auxiliares / Core
     CORE_UBICACIONES: (soloFisicas: boolean = true) => `gestion_inventario/core/ubicaciones/?solo_fisicas=${soloFisicas}`,

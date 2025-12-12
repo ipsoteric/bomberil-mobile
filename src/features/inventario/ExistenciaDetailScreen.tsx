@@ -9,12 +9,17 @@ import { AppStackParamList } from '@/navigation/types';
 type Props = NativeStackScreenProps<AppStackParamList, 'DetalleExistencia'>;
 
 export default function ExistenciaDetailScreen({ navigation }: Props) {
-  const { currentExistencia, isLoading, clearCurrentExistencia, ajustarStock } = useInventoryStore();
+  const { currentExistencia, isLoading, clearCurrentExistencia, ajustarStock, consumirStock } = useInventoryStore();
 
   // Estado para Modal de Ajuste de stock
   const [showAjusteModal, setShowAjusteModal] = useState(false);
   const [nuevaCantidad, setNuevaCantidad] = useState('');
   const [notaAjuste, setNotaAjuste] = useState('');
+
+  // Estado para Modal de Consumo
+  const [showConsumoModal, setShowConsumoModal] = useState(false);
+  const [cantConsumo, setCantConsumo] = useState('');
+  const [notaConsumo, setNotaConsumo] = useState('');
 
   useEffect(() => {
     return () => clearCurrentExistencia();
@@ -27,7 +32,6 @@ export default function ExistenciaDetailScreen({ navigation }: Props) {
       </View>
     );
   }
-
 
 
 
@@ -58,11 +62,40 @@ export default function ExistenciaDetailScreen({ navigation }: Props) {
       Alert.alert("Ajuste Realizado", "El inventario ha sido actualizado correctamente.");
     }
   };
-
   // Cálculo de diferencia visual
   const diff = nuevaCantidad && currentExistencia ? parseInt(nuevaCantidad) - (currentExistencia.cantidad_actual || 0) : 0;
   const diffColor = diff > 0 ? 'text-green-600' : diff < 0 ? 'text-red-600' : 'text-gray-400';
   const diffSign = diff > 0 ? '+' : '';
+
+
+
+  const handleConsumoSubmit = async () => {
+    if (!cantConsumo || parseInt(cantConsumo) <= 0) {
+      Alert.alert("Error", "La cantidad debe ser mayor a 0.");
+      return;
+    }
+    
+    if (!currentExistencia) return;
+
+    // Validación Stock Insuficiente (Frontend check rápido)
+    if (parseInt(cantConsumo) > (currentExistencia.cantidad_actual || 0)) {
+      Alert.alert("Stock Insuficiente", `Solo tienes ${currentExistencia.cantidad_actual} unidades disponibles.`);
+      return;
+    }
+
+    const success = await consumirStock({
+      id: currentExistencia.id.toString(), // Aseguramos string UUID
+      cantidad: parseInt(cantConsumo),
+      notas: notaConsumo
+    });
+
+    if (success) {
+      setShowConsumoModal(false);
+      setCantConsumo('');
+      setNotaConsumo('');
+      Alert.alert("Consumo Registrado", "El stock ha sido descontado.");
+    }
+  };
 
 
 
@@ -184,20 +217,30 @@ export default function ExistenciaDetailScreen({ navigation }: Props) {
               {/* BLOQUE DE ACCIÓN PARA LOTES */}
               {!isActivo && (
                 <View className="mt-4 pt-4 border-t border-gray-100">
-                  <View className="flex-row justify-between items-center mb-3">
-                    <Text className="text-gray-500 text-xs uppercase font-bold">Gestión de Stock</Text>
-                  </View>
+                  <Text className="text-gray-500 text-xs uppercase font-bold mb-3">Gestión de Stock</Text>
                   
-                  <TouchableOpacity 
-                    onPress={() => {
-                        setNuevaCantidad(currentExistencia?.cantidad_actual?.toString() || '0');
-                        setShowAjusteModal(true);
-                    }}
-                    className="bg-gray-900 py-3 rounded-xl flex-row justify-center items-center"
-                  >
-                    <Feather name="sliders" size={18} color="white" />
-                    <Text className="text-white font-bold ml-2">Ajustar Cantidad</Text>
-                  </TouchableOpacity>
+                  <View className="flex-row justify-between">
+                    {/* Botón CONSUMIR (Principal) */}
+                    <TouchableOpacity 
+                        onPress={() => setShowConsumoModal(true)}
+                        className="bg-orange-600 py-3 rounded-xl flex-row justify-center items-center flex-1 mr-2 shadow-sm"
+                    >
+                        <Feather name="minus-circle" size={18} color="white" />
+                        <Text className="text-white font-bold ml-2">Consumir</Text>
+                    </TouchableOpacity>
+
+                    {/* Botón AJUSTAR (Secundario / Corrección) */}
+                    <TouchableOpacity 
+                        onPress={() => {
+                            setNuevaCantidad(currentExistencia?.cantidad_actual?.toString() || '0');
+                            setShowAjusteModal(true);
+                        }}
+                        className="bg-gray-200 py-3 rounded-xl flex-row justify-center items-center flex-1 ml-2"
+                    >
+                        <Feather name="sliders" size={18} color="#374151" />
+                        <Text className="text-gray-700 font-bold ml-2">Ajustar</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               )}
             </View>
@@ -277,6 +320,64 @@ export default function ExistenciaDetailScreen({ navigation }: Props) {
                 <>
                   <Feather name="save" size={20} color="white" />
                   <Text className="text-white font-bold text-lg ml-2">Confirmar Ajuste</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+
+
+
+      {/* --- MODAL DE CONSUMO --- */}
+      <Modal animationType="slide" transparent={true} visible={showConsumoModal} onRequestClose={() => setShowConsumoModal(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 justify-end bg-black/60">
+          <View className="bg-white rounded-t-3xl p-6">
+            <View className="flex-row justify-between items-center mb-6">
+              <Text className="text-xl font-bold text-gray-800">Registrar Consumo</Text>
+              <TouchableOpacity onPress={() => setShowConsumoModal(false)} className="p-2 bg-gray-100 rounded-full">
+                <Feather name="x" size={24} color="#4b5563" />
+              </TouchableOpacity>
+            </View>
+
+            <View className="bg-orange-50 p-4 rounded-xl mb-6 border border-orange-100">
+                <Text className="text-orange-800 text-xs font-bold uppercase mb-1">Disponible</Text>
+                <Text className="text-3xl font-extrabold text-orange-900">
+                    {currentExistencia?.cantidad_actual} <Text className="text-base font-medium">{currentExistencia?.unidad_medida}</Text>
+                </Text>
+            </View>
+
+            <Text className="text-gray-600 font-bold mb-2 text-sm">Cantidad a usar</Text>
+            <TextInput 
+              className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-4 text-xl font-bold text-gray-900"
+              placeholder="0"
+              keyboardType="numeric"
+              value={cantConsumo}
+              onChangeText={setCantConsumo}
+              autoFocus
+            />
+
+            <Text className="text-gray-600 font-bold mb-2 text-sm">Motivo / Uso</Text>
+            <TextInput 
+              className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-6 h-20 text-gray-800"
+              placeholder="Ej: Ejercicio de academia, Incendio..."
+              multiline
+              textAlignVertical="top"
+              value={notaConsumo}
+              onChangeText={setNotaConsumo}
+            />
+
+            <TouchableOpacity 
+              onPress={handleConsumoSubmit}
+              className="bg-orange-600 py-4 rounded-xl flex-row justify-center items-center shadow-md mb-4"
+            >
+              {isLoading ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <>
+                  <Feather name="check" size={20} color="white" />
+                  <Text className="text-white font-bold text-lg ml-2">Confirmar Consumo</Text>
                 </>
               )}
             </TouchableOpacity>

@@ -105,7 +105,13 @@ export interface Compartimento {
 }
 
 export interface AjusteStockPayload {
-  id: string; // ID del Lote
+  id: string; // UUID
   nueva_cantidad: number;
+  notas?: string;
+}
+
+export interface ConsumoStockPayload {
+  id: string; // UUID
+  cantidad: number;
   notas?: string;
 }

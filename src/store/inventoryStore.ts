@@ -8,7 +8,8 @@ import {
   Proveedor, 
   Ubicacion, 
   Compartimento, 
-  AjusteStockPayload
+  AjusteStockPayload,
+  ConsumoStockPayload
 } from '@/features/inventario/types';
 import { Alert } from 'react-native';
 
@@ -29,6 +30,7 @@ interface InventoryState {
   fetchExistenciasPorProducto: (productoId: number) => Promise<void>;
   recepcionarStock: (payload: RecepcionPayload) => Promise<boolean>;
   ajustarStock: (payload: AjusteStockPayload) => Promise<boolean>;
+  consumirStock: (payload: ConsumoStockPayload) => Promise<boolean>;
   clearCurrentExistencia: () => void;
   clearExistenciasProducto: () => void;
 
@@ -142,6 +144,28 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     } catch (error: any) {
       console.log("Error ajustando stock:", error);
       const msg = error.response?.data?.detail || "Error al realizar el ajuste.";
+      set({ error: msg, isLoading: false });
+      Alert.alert("Error", msg);
+      return false;
+    }
+  },
+
+  consumirStock: async (payload: ConsumoStockPayload) => {
+    set({ isLoading: true, error: null });
+    try {
+      await client.post(ENDPOINTS.INVENTARIO.CONSUMIR_STOCK, payload);
+      
+      // Recargar datos para ver el stock actualizado
+      const current = get().currentExistencia;
+      if (current) {
+        await get().fetchExistenciaByQR(current.codigo);
+      }
+      
+      set({ isLoading: false });
+      return true;
+    } catch (error: any) {
+      console.log("Error consumiendo stock:", error);
+      const msg = error.response?.data?.detail || "Error al registrar el consumo.";
       set({ error: msg, isLoading: false });
       Alert.alert("Error", msg);
       return false;
