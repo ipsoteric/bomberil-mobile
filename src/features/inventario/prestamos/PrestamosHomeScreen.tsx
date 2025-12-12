@@ -85,8 +85,7 @@ export default function PrestamosHomeScreen({ navigation }: Props) {
           
           {/* Botón Crear Nuevo */}
           <TouchableOpacity 
-            onPress={() => Alert.alert("Próximamente", "La creación de préstamos viene en la Fase 3.")}
-            // onPress={() => navigation.navigate('CrearPrestamo')} // Futuro enlace
+            onPress={() => navigation.navigate('CrearPrestamo')} // <--- CONEXIÓN REAL
             className="bg-gray-900 px-3 py-2 rounded-lg flex-row items-center"
           >
             <Feather name="plus" size={16} color="white" />

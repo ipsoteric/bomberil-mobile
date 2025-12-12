@@ -12,6 +12,7 @@ import ExistenciasPorProductoScreen from '@/features/inventario/ExistenciasPorPr
 import ExistenciaDetailScreen from '@/features/inventario/ExistenciaDetailScreen';
 import RecepcionStockScreen from '@/features/inventario/RecepcionStockScreen';
 import PrestamosHomeScreen from '@/features/inventario/prestamos/PrestamosHomeScreen';
+import CrearPrestamoScreen from '@/features/inventario/prestamos/CrearPrestamoScreen';
 import PerfilScreen from '@/features/perfil/PerfilScreen';
 
 const Stack = createNativeStackNavigator<AppStackParamList>();
@@ -65,6 +66,11 @@ export const AppNavigator = () => {
         name="PrestamosHome" 
         component={PrestamosHomeScreen} 
         options={{ title: 'Gestión de Préstamos' }} // O headerShown: false si usas header custom
+      />
+      <Stack.Screen 
+        name="CrearPrestamo" 
+        component={CrearPrestamoScreen} 
+        options={{ title: 'Nuevo Préstamo', presentation: 'modal' }} // Modal para indicar que es un proceso
       />
       <Stack.Screen 
         name="MiPerfil" 
