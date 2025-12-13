@@ -1,11 +1,24 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Modal, TextInput, FlatList, Image } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { 
+    View, 
+    Text, 
+    ScrollView, 
+    TouchableOpacity, 
+    ActivityIndicator, 
+    Alert, 
+    Modal, 
+    TextInput, 
+    FlatList, 
+    Image, 
+    Switch, 
+    KeyboardAvoidingView, 
+    Platform 
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useMaintenanceStore } from '@/store/maintenanceStore';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppStackParamList } from '@/navigation/types';
-import { useFocusEffect } from '@react-navigation/native';
 import { ItemOrden, ActivoBusquedaOrden } from './types';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'DetalleOrden'>;
@@ -16,12 +29,19 @@ export default function DetalleOrdenScreen({ navigation, route }: Props) {
     currentOrden, isLoading, activosBusqueda, 
     fetchDetalleOrden, cambiarEstadoOrden, 
     buscarActivosParaOrden, anadirActivoAOrden, quitarActivoDeOrden,
+    registrarTarea,
     clearCurrentOrden, clearBusqueda 
   } = useMaintenanceStore();
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searching, setSearching] = useState(false);
+
+  // ESTADOS PARA TAREAS (EJECUCIÓN)
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [selectedActivo, setSelectedActivo] = useState<ItemOrden | null>(null);
+  const [taskNotes, setTaskNotes] = useState('');
+  const [taskSuccess, setTaskSuccess] = useState(true);
 
   // Carga inicial y limpieza
   useEffect(() => {
@@ -43,7 +63,7 @@ export default function DetalleOrdenScreen({ navigation, route }: Props) {
     return () => clearTimeout(timeout);
   }, [searchQuery, showAddModal]);
 
-  // Acciones
+  // --- ACCIONES FASE 4 (Planificación) ---
   const handleIniciarOrden = () => {
     if (!currentOrden) return;
     if (currentOrden.items.length === 0) {
@@ -52,14 +72,13 @@ export default function DetalleOrdenScreen({ navigation, route }: Props) {
 
     Alert.alert(
       "Iniciar Ejecución",
-      "Al iniciar, la orden pasará a 'EN CURSO' y ya no podrás agregar o quitar activos, solo registrar tareas.",
+      "Al iniciar, la orden pasará a 'EN CURSO'. Ya no podrás agregar o quitar activos, solo registrar tareas.",
       [
         { text: "Cancelar", style: "cancel" },
         { 
           text: "Iniciar", 
           onPress: async () => {
             await cambiarEstadoOrden(id, 'iniciar');
-            // El store refresca el detalle automáticamente
           }
         }
       ]
@@ -67,10 +86,11 @@ export default function DetalleOrdenScreen({ navigation, route }: Props) {
   };
 
   const handleAddActivo = async (activo: ActivoBusquedaOrden) => {
-    const success = await anadirActivoAOrden(id, activo.id.toString()); // Convertir a string por si acaso es número
+    // Nota: El backend espera 'id' numérico o string según tu modelo.
+    // Aquí asumimos que anadirActivoAOrden maneja la conversión.
+    const success = await anadirActivoAOrden(id, activo.id.toString());
     if (success) {
-      // Feedback sutil, no cerramos el modal para permitir agregar más rápido
-      // Opcional: Toast
+      // Feedback opcional (Toast)
     }
   };
 
@@ -87,6 +107,58 @@ export default function DetalleOrdenScreen({ navigation, route }: Props) {
         }
       ]
     );
+  };
+
+  // --- ACCIONES FASE 5 (Ejecución) ---
+  const handleFinalizarOrden = () => {
+    const pendientes = currentOrden?.items.filter(i => i.estado_trabajo !== 'COMPLETADO').length || 0;
+    
+    let mensaje = "La orden pasará a estado 'REALIZADA' y se cerrará.";
+    if (pendientes > 0) {
+      mensaje = `ATENCIÓN: Aún hay ${pendientes} activos sin registro de tarea. ` + mensaje;
+    }
+
+    Alert.alert(
+      "Finalizar Orden",
+      mensaje,
+      [
+        { text: "Cancelar", style: "cancel" },
+        { 
+          text: "Finalizar", 
+          onPress: async () => {
+            const success = await cambiarEstadoOrden(id, 'finalizar');
+            if (success) {
+              navigation.goBack();
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleOpenTaskModal = (activo: ItemOrden) => {
+    setSelectedActivo(activo);
+    setTaskNotes(''); 
+    setTaskSuccess(true);
+    setShowTaskModal(true);
+  };
+
+  const handleRegisterTask = async () => {
+    if (!selectedActivo) return;
+    if (!taskNotes.trim()) {
+      return Alert.alert("Requerido", "Debes ingresar notas sobre el trabajo realizado.");
+    }
+
+    const success = await registrarTarea(id, {
+      activo_id: selectedActivo.id,
+      notas: taskNotes,
+      exitoso: taskSuccess
+    });
+
+    if (success) {
+      setShowTaskModal(false);
+      setSelectedActivo(null);
+    }
   };
 
   if (isLoading && !currentOrden) {
@@ -150,7 +222,7 @@ export default function DetalleOrdenScreen({ navigation, route }: Props) {
            </View>
         </View>
 
-        {/* LISTA DE ACTIVOS (PLANIFICACIÓN) */}
+        {/* LISTA DE ACTIVOS (PLANIFICACIÓN & EJECUCIÓN) */}
         <View className="flex-row justify-between items-center mb-3">
            <Text className="text-xs font-bold text-gray-400 uppercase">
               Activos Asignados ({items.length})
@@ -174,47 +246,70 @@ export default function DetalleOrdenScreen({ navigation, route }: Props) {
               </Text>
            </View>
         ) : (
-           items.map((item) => (
-              <View key={item.id} className="bg-white p-3 mb-2 rounded-xl border border-gray-100 flex-row items-center">
-                 {/* Imagen o Icono */}
-                 <View className="w-10 h-10 bg-gray-50 rounded-lg justify-center items-center mr-3 overflow-hidden">
-                    {item.imagen_url ? (
-                       <Image source={{ uri: item.imagen_url }} className="w-full h-full" resizeMode="cover" />
-                    ) : (
-                       <Feather name="box" size={18} color="#9ca3af" />
-                    )}
-                 </View>
-                 
-                 <View className="flex-1">
-                    <Text className="font-bold text-gray-800 text-sm" numberOfLines={1}>{item.nombre}</Text>
-                    <Text className="text-xs text-gray-500">{item.codigo}</Text>
-                    <Text className="text-[10px] text-gray-400" numberOfLines={1}>{item.ubicacion}</Text>
-                 </View>
+            items.map((item) => (
+                  <TouchableOpacity 
+                     key={item.id} 
+                     // Si está EN_CURSO y NO completado, permitir click para registrar.
+                     disabled={!(isEnCurso && item.estado_trabajo !== 'COMPLETADO')}
+                     onPress={() => handleOpenTaskModal(item)}
+                     activeOpacity={0.7}
+                     className={`bg-white p-3 mb-2 rounded-xl border flex-row items-center ${
+                        item.estado_trabajo === 'COMPLETADO' ? 'border-green-100 opacity-80' : 'border-gray-100'
+                     }`}
+                  >
+                     <View className="w-10 h-10 bg-gray-50 rounded-lg justify-center items-center mr-3 overflow-hidden">
+                        {item.imagen_url ? (
+                           <Image source={{ uri: item.imagen_url }} className="w-full h-full" resizeMode="cover" />
+                        ) : (
+                           <Feather name="box" size={18} color="#9ca3af" />
+                        )}
+                     </View>
+                     
+                     <View className="flex-1">
+                        <Text className="font-bold text-gray-800 text-sm" numberOfLines={1}>{item.nombre}</Text>
+                        <Text className="text-xs text-gray-500">{item.codigo}</Text>
+                        <Text className="text-[10px] text-gray-400" numberOfLines={1}>{item.ubicacion}</Text>
+                     </View>
 
-                 {/* Acciones por Ítem */}
-                 {isPendiente ? (
-                    <TouchableOpacity onPress={() => handleRemoveActivo(item)} className="p-2">
-                       <Feather name="trash-2" size={18} color="#ef4444" />
-                    </TouchableOpacity>
-                 ) : (
-                    // Fase 5: Indicador de estado tarea (Pendiente/Listo)
-                    <View className={`px-2 py-1 rounded ${item.estado_trabajo === 'COMPLETADO' ? 'bg-green-100' : 'bg-gray-100'}`}>
-                       {item.estado_trabajo === 'COMPLETADO' ? (
-                          <Feather name="check" size={16} color="green" />
-                       ) : (
-                          <Feather name="clock" size={16} color="gray" />
-                       )}
-                    </View>
-                 )}
-              </View>
-           ))
+                     {/* ACCIONES POR FILA */}
+                     <View className="ml-2">
+                        {isPendiente && (
+                            <TouchableOpacity onPress={() => handleRemoveActivo(item)} className="p-2">
+                               <Feather name="trash-2" size={18} color="#ef4444" />
+                            </TouchableOpacity>
+                        )}
+
+                        {isEnCurso && (
+                            <View className={`px-3 py-1.5 rounded-full flex-row items-center ${
+                               item.estado_trabajo === 'COMPLETADO' ? 'bg-green-100' : 'bg-blue-50 border border-blue-100'
+                            }`}>
+                               {item.estado_trabajo === 'COMPLETADO' ? (
+                                  <>
+                                    <Feather name="check" size={14} color="green" />
+                                    <Text className="text-[10px] font-bold text-green-800 ml-1">Listo</Text>
+                                  </>
+                               ) : (
+                                  <>
+                                    <Feather name="edit-2" size={14} color="#2563eb" />
+                                    <Text className="text-[10px] font-bold text-blue-700 ml-1">Registrar</Text>
+                                  </>
+                               )}
+                            </View>
+                        )}
+
+                        {isFinalizada && item.estado_trabajo === 'COMPLETADO' && (
+                            <Feather name="check-circle" size={20} color="green" />
+                        )}
+                     </View>
+                  </TouchableOpacity>
+            ))
         )}
 
         {/* Espaciador inferior */}
         <View className="h-24" />
       </ScrollView>
 
-      {/* FOOTER ACTIONS (SOLO PENDIENTE) */}
+      {/* FOOTER ACTIONS */}
       {isPendiente && (
          <View className="p-4 bg-white border-t border-gray-100 absolute bottom-0 left-0 right-0">
             <TouchableOpacity 
@@ -226,6 +321,23 @@ export default function DetalleOrdenScreen({ navigation, route }: Props) {
                   <>
                      <Feather name="play" size={20} color="white" />
                      <Text className="text-white font-bold text-lg ml-2">Iniciar Orden</Text>
+                  </>
+               )}
+            </TouchableOpacity>
+         </View>
+      )}
+
+      {isEnCurso && (
+         <View className="p-4 bg-white border-t border-gray-100 absolute bottom-0 left-0 right-0">
+            <TouchableOpacity 
+               onPress={handleFinalizarOrden}
+               disabled={isLoading}
+               className={`py-4 rounded-xl flex-row justify-center items-center shadow-lg ${isLoading ? 'bg-gray-400' : 'bg-green-700'}`}
+            >
+               {isLoading ? <ActivityIndicator color="white" /> : (
+                  <>
+                     <Feather name="check-square" size={20} color="white" />
+                     <Text className="text-white font-bold text-lg ml-2">Finalizar Orden</Text>
                   </>
                )}
             </TouchableOpacity>
@@ -286,6 +398,56 @@ export default function DetalleOrdenScreen({ navigation, route }: Props) {
                />
             )}
          </View>
+      </Modal>
+
+      {/* MODAL REGISTRO DE TAREA */}
+      <Modal visible={showTaskModal} animationType="slide" transparent>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 justify-end bg-black/50">
+           <View className="bg-white rounded-t-3xl p-6 pb-10">
+              <View className="flex-row justify-between items-center mb-4">
+                 <Text className="text-xl font-bold text-gray-800">Registrar Tarea</Text>
+                 <TouchableOpacity onPress={() => setShowTaskModal(false)} className="p-2 bg-gray-100 rounded-full">
+                    <Feather name="x" size={20} color="#374151" />
+                 </TouchableOpacity>
+              </View>
+
+              <View className="bg-gray-50 p-3 rounded-xl mb-4 flex-row items-center border border-gray-200">
+                 <Feather name="box" size={20} color="#4b5563" />
+                 <Text className="font-bold text-gray-700 ml-3 flex-1" numberOfLines={1}>
+                    {selectedActivo?.nombre}
+                 </Text>
+              </View>
+
+              <Text className="label-form mb-2 font-bold text-gray-600">Bitácora / Notas *</Text>
+              <TextInput 
+                 className="bg-white border border-gray-300 rounded-xl px-4 py-3 h-24 text-gray-800 mb-4"
+                 placeholder="Describe el trabajo realizado..."
+                 multiline
+                 textAlignVertical="top"
+                 value={taskNotes}
+                 onChangeText={setTaskNotes}
+                 autoFocus
+              />
+
+              <View className="flex-row justify-between items-center mb-6 bg-gray-50 p-3 rounded-xl">
+                 <Text className="font-bold text-gray-700">¿Trabajo Exitoso?</Text>
+                 <Switch 
+                    value={taskSuccess}
+                    onValueChange={setTaskSuccess}
+                    trackColor={{ false: "#fca5a5", true: "#86efac" }}
+                    thumbColor={taskSuccess ? "#16a34a" : "#dc2626"}
+                 />
+              </View>
+
+              <TouchableOpacity 
+                 onPress={handleRegisterTask}
+                 className="bg-gray-900 py-4 rounded-xl flex-row justify-center items-center"
+              >
+                 <Feather name="save" size={20} color="white" />
+                 <Text className="text-white font-bold text-lg ml-2">Guardar Registro</Text>
+              </TouchableOpacity>
+           </View>
+        </KeyboardAvoidingView>
       </Modal>
 
     </SafeAreaView>
