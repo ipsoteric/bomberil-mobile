@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useUsersStore } from '@/store/usersStore';
 
@@ -17,10 +16,10 @@ export default function HojaVidaScreen() {
 
   if (!selectedHojaVida) return null;
 
-  const { perfil, institucional, historial } = selectedHojaVida;
+  const { perfil, institucional, historial, contacto } = selectedHojaVida;
 
   const SectionTitle = ({ icon, title }: { icon: any, title: string }) => (
-    <View className="flex-row items-center mb-3 mt-2">
+    <View className="flex-row items-center mb-3 mt-4 px-1">
         <Feather name={icon} size={18} color="#4b5563" />
         <Text className="ml-2 font-bold text-gray-700 uppercase text-xs tracking-wider">{title}</Text>
     </View>
@@ -29,8 +28,8 @@ export default function HojaVidaScreen() {
   return (
     <ScrollView className="flex-1 bg-gray-50 p-4" showsVerticalScrollIndicator={false}>
       
-      {/* 1. RESUMEN INSTITUCIONAL */}
-      <View className="bg-white p-5 rounded-xl shadow-sm mb-4 border-l-4 border-blue-600">
+      {/* 1. CABECERA INSTITUCIONAL */}
+      <View className="bg-white p-5 rounded-xl shadow-sm mb-2 border-l-4 border-blue-600">
          <Text className="text-xl font-bold text-gray-900">{perfil.nombre_completo}</Text>
          <Text className="text-gray-500 text-sm mb-4">{perfil.rut}</Text>
 
@@ -55,8 +54,8 @@ export default function HojaVidaScreen() {
       </View>
 
       {/* 2. DATOS PERSONALES */}
-      <View className="bg-white p-4 rounded-xl shadow-sm mb-4">
-         <SectionTitle icon="user" title="Datos Personales" />
+      <View className="bg-white p-4 rounded-xl shadow-sm mb-2">
+         <Text className="text-xs font-bold text-gray-400 uppercase mb-3">Datos Personales</Text>
          <View className="border-t border-gray-100 pt-3">
             <Text className="text-gray-600 mb-1"><Text className="font-bold">Profesión:</Text> {perfil.profesion}</Text>
             <Text className="text-gray-600 mb-1"><Text className="font-bold">Estado Civil:</Text> {perfil.estado_civil}</Text>
@@ -65,10 +64,31 @@ export default function HojaVidaScreen() {
          </View>
       </View>
 
-      {/* 3. HISTORIAL DE CARGOS */}
+      {/* 3. INFORMACIÓN DE CONTACTO (NUEVO) */}
+      <View className="bg-white p-4 rounded-xl shadow-sm mb-2">
+         <Text className="text-xs font-bold text-gray-400 uppercase mb-3">Contacto</Text>
+         <View className="border-t border-gray-100 pt-3">
+            <View className="flex-row items-center mb-2">
+                <Feather name="phone" size={14} color="#6b7280" />
+                <Text className="text-gray-700 ml-2">{contacto.telefono || 'No registrado'}</Text>
+            </View>
+            <View className="flex-row items-center mb-2">
+                <Feather name="mail" size={14} color="#6b7280" />
+                <Text className="text-gray-700 ml-2">{contacto.email || 'No registrado'}</Text>
+            </View>
+            <View className="flex-row items-center">
+                <Feather name="map-pin" size={14} color="#6b7280" />
+                <Text className="text-gray-700 ml-2 flex-1">
+                    {contacto.direccion ? `${contacto.direccion}, ${contacto.comuna}` : 'Sin dirección'}
+                </Text>
+            </View>
+         </View>
+      </View>
+
+      {/* 4. HISTORIAL DE CARGOS */}
       <SectionTitle icon="briefcase" title="Historial de Cargos" />
       {historial.cargos.length === 0 ? (
-          <Text className="text-gray-400 text-center italic mb-4">Sin registros.</Text>
+          <Text className="text-gray-400 text-center italic mb-4">Sin registros de cargos.</Text>
       ) : (
           historial.cargos.map((cargo, index) => (
             <View key={index} className="bg-white p-4 rounded-xl shadow-sm mb-2 flex-row border-l-4 border-gray-300">
@@ -84,7 +104,7 @@ export default function HojaVidaScreen() {
           ))
       )}
 
-      {/* 4. RECONOCIMIENTOS Y PREMIOS */}
+      {/* 5. RECONOCIMIENTOS */}
       {historial.premios.length > 0 && (
           <>
             <SectionTitle icon="award" title="Reconocimientos" />
@@ -100,7 +120,7 @@ export default function HojaVidaScreen() {
           </>
       )}
 
-      {/* 5. SANCIONES */}
+      {/* 6. SANCIONES */}
       {historial.sanciones.length > 0 && (
           <>
             <SectionTitle icon="alert-triangle" title="Historial Disciplinario" />

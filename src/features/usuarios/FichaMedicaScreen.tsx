@@ -87,19 +87,41 @@ export default function FichaMedicaScreen() {
          </View>
       </View>
 
-      {/* MEDICAMENTOS */}
-      {tratamiento.medicamentos.length > 0 && (
+      {/* TRATAMIENTO (MEDICAMENTOS Y CIRUGÍAS) */}
+      {(tratamiento.medicamentos.length > 0 || tratamiento.cirugias.length > 0) && (
           <View className="bg-white p-4 rounded-xl shadow-sm mb-4">
-             <View className="flex-row items-center mb-3">
-                 <Feather name="briefcase" size={18} color="#4b5563" />
-                 <Text className="ml-2 font-bold text-gray-700">Medicamentos Permanentes</Text>
-             </View>
-             {tratamiento.medicamentos.map((med, i) => (
-                 <View key={i} className="mb-2 pb-2 border-b border-gray-50 last:border-0">
-                     <Text className="font-bold text-gray-800">{med.nombre}</Text>
-                     <Text className="text-xs text-gray-500">{med.dosis}</Text>
-                 </View>
-             ))}
+             
+             {/* Medicamentos */}
+             {tratamiento.medicamentos.length > 0 && (
+                <View className="mb-4">
+                    <View className="flex-row items-center mb-3">
+                        <Feather name="briefcase" size={18} color="#4b5563" />
+                        <Text className="ml-2 font-bold text-gray-700">Medicamentos Permanentes</Text>
+                    </View>
+                    {tratamiento.medicamentos.map((med, i) => (
+                        <View key={i} className="mb-2 pb-2 border-b border-gray-50 last:border-0">
+                            <Text className="font-bold text-gray-800">{med.nombre}</Text>
+                            <Text className="text-xs text-gray-500">{med.dosis}</Text>
+                        </View>
+                    ))}
+                </View>
+             )}
+
+             {/* Cirugías (NUEVO) */}
+             {tratamiento.cirugias.length > 0 && (
+                <View>
+                    <View className="flex-row items-center mb-3 mt-2">
+                        <Feather name="scissors" size={18} color="#4b5563" />
+                        <Text className="ml-2 font-bold text-gray-700">Cirugías Previas</Text>
+                    </View>
+                    {tratamiento.cirugias.map((cir, i) => (
+                        <View key={i} className="mb-2 pb-2 border-b border-gray-50 last:border-0">
+                            <Text className="font-bold text-gray-800">{cir.nombre}</Text>
+                            <Text className="text-xs text-gray-500">{cir.fecha} • {cir.observacion}</Text>
+                        </View>
+                    ))}
+                </View>
+             )}
           </View>
       )}
 
