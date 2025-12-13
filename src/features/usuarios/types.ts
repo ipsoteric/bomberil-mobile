@@ -21,6 +21,7 @@ export interface UsuarioDetalle {
   email: string;
   avatar_url: string | null;
   estado: string;
+  estado_codigo: string;
   roles: string[];
   roles_display: string;
   fecha_ingreso: string;

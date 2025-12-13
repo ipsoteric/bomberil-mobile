@@ -27,11 +27,15 @@ export type AppStackParamList = {
   CrearOrden: undefined;
   DetalleOrden: { id: number; scannedCode?: string };
 
+  // USUARIOS
+  UsuariosList: undefined;
+  UsuarioDetalle: { id: string }; // UUID
+  HojaVida: { id: string };
+  FichaMedica: { id: string };
+
   // DOCUMENTAL
   DocumentalList: undefined;
   
-  VoluntariosHome: undefined; // Módulo Voluntarios
-  FichaMedica: { voluntarioId?: number }; // Módulo Médico
   MiPerfil: undefined;
 };
 

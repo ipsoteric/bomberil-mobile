@@ -141,6 +141,15 @@ export default function DashboardScreen({ navigation }: Props) {
             onPress={() => navigation.navigate('MantenimientoList')}
           />
 
+          {/* USUARIOS (DIRECTORIO) */}
+          <MenuCard 
+            title="Directorio de Personal" 
+            subtitle="Usuarios, voluntarios y roles"
+            icon="users"
+            color="bg-indigo-600"
+            onPress={() => navigation.navigate('UsuariosList')}
+          />
+
           {/* 4. Módulo DOCUMENTACIÓN (Placeholder) */}
           <MenuCard 
             title="Biblioteca Digital" 
