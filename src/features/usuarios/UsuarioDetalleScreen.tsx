@@ -17,19 +17,17 @@ export default function UsuarioDetalleScreen({ navigation, route }: Props) {
   }, [id]);
 
   const handleVerFicha = async () => {
-    // Verificamos permisos intentando cargar la ficha
+    // El store maneja el fetch y devuelve false si hay error (ej: 403 Forbidden)
     const success = await fetchFichaMedica(id);
     if (success) {
-        // 
-        Alert.alert("Próximamente", "Pantalla de Ficha Médica en Commit 41");
-        // navigation.navigate('FichaMedica', { id }); 
+        navigation.navigate('FichaMedica', { id }); 
     }
   };
 
-  const handleVerHojaVida = () => {
-      // 
-      Alert.alert("Próximamente", "Pantalla de Hoja de Vida en Commit 41");
-      // navigation.navigate('HojaVida', { id });
+  const handleVerHojaVida = async () => {
+      // Cargamos los datos antes de navegar
+      await useUsersStore.getState().fetchHojaVida(id);
+      navigation.navigate('HojaVida', { id });
   };
 
   if (isLoading && !selectedUsuario) {

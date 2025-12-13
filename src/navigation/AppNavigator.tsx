@@ -19,6 +19,8 @@ import CrearOrdenScreen from '@/features/mantenimiento/CrearOrdenScreen';
 import DetalleOrdenScreen from '@/features/mantenimiento/DetalleOrdenScreen';
 import UsuariosListScreen from '@/features/usuarios/UsuariosListScreen';
 import UsuarioDetalleScreen from '@/features/usuarios/UsuarioDetalleScreen';
+import HojaVidaScreen from '@/features/usuarios/HojaVidaScreen';
+import FichaMedicaScreen from '@/features/usuarios/FichaMedicaScreen';
 import DocumentalListScreen from '@/features/documental/DocumentalListScreen';
 import PerfilScreen from '@/features/perfil/PerfilScreen';
 
@@ -108,6 +110,16 @@ export const AppNavigator = () => {
         name="UsuarioDetalle" 
         component={UsuarioDetalleScreen} 
         options={{ headerShown: false }} 
+      />
+      <Stack.Screen 
+        name="HojaVida" 
+        component={HojaVidaScreen} 
+        options={{ title: 'Hoja de Vida' }} 
+      />
+      <Stack.Screen 
+        name="FichaMedica" 
+        component={FichaMedicaScreen} 
+        options={{ title: 'Ficha Médica', headerTintColor: '#b91c1c' }} // Rojo para denotar salud/emergencia
       />
       <Stack.Screen 
         name="DocumentalList" 
