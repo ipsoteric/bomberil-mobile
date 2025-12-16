@@ -65,16 +65,29 @@ export default function MantenimientoListScreen({ navigation }: Props) {
     >
       <View className="flex-row justify-between items-start mb-2">
         <View className="flex-1 pr-2">
-          {item.tipo_codigo === 'CORRECTIVA' && (
-             <View className="self-start bg-purple-100 px-2 py-0.5 rounded mb-1">
-               <Text className="text-[10px] font-bold text-purple-800">CORRECTIVA</Text>
-             </View>
-          )}
+          
+          <View className="flex-row flex-wrap gap-2 mb-1">
+            {/* Tag Tipo */}
+            {item.tipo_codigo === 'CORRECTIVA' && (
+              <View className="bg-purple-100 px-2 py-0.5 rounded">
+                <Text className="text-[10px] font-bold text-purple-800">CORRECTIVA</Text>
+              </View>
+            )}
+            
+            {/* Tag RESPONSABILIDAD - Ahora usamos el campo del backend */}
+            {item.es_responsable && (
+              <View className="bg-indigo-100 px-2 py-0.5 rounded flex-row items-center border border-indigo-200">
+                <Feather name="user-check" size={10} color="#3730a3" />
+                <Text className="text-[10px] font-bold text-indigo-800 ml-1">ERES RESPONSABLE</Text>
+              </View>
+            )}
+          </View>
+
           <Text className="font-bold text-gray-900 text-base" numberOfLines={2}>
             {item.titulo}
           </Text>
           <Text className="text-xs text-gray-400 mt-1">
-            #{item.id} • Resp: {item.responsable.split(' ')[0]}
+            #{item.id} • Responsable: {item.responsable}
           </Text>
         </View>
         
