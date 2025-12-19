@@ -34,76 +34,59 @@ export default function LoginScreen({ navigation }: Props) {
 
 
   const handleLogin = async () => {
-    if (!rut || !password) {
+    if (!rut.trim() || !password.trim()) {
         Alert.alert('Faltan datos', 'Por favor ingresa tu credencial y contraseña');
         return;
     }
-    
-    Keyboard.dismiss();
+
     setLoading(true);
-    
     try {
-      // 1. PETICIÓN REAL AL BACKEND
-      // Enviamos 'username' porque SimpleJWT espera ese campo por defecto (aunque sea un RUT) -> REVISAR
-      const response = await client.post(ENDPOINTS.AUTH.LOGIN, {
-        rut: rut, // Django espera 'username' aunque le mandes el RUT
-        password: password
-      });
+        const response = await client.post(ENDPOINTS.AUTH.LOGIN, {
+            rut: rut.trim(), // Limpiamos espacios
+            password: password
+        });
 
-      const data = response.data;
+        // Si llega aquí, es 200 OK
+        await signIn(response.data);
 
-      // VALIDACIÓN DE SEGURIDAD FRONTEND:
-      // Aunque el backend no falle, si por alguna razón devuelve data sin estación,
-      // bloqueamos el ingreso aquí mismo.
-      if (!data.estacion || !data.permisos || data.permisos.length === 0) {
-        Alert.alert(
-          'Acceso Denegado', 
-          'Tu usuario no tiene una membresía activa en ninguna estación. Contacta a tu oficial a cargo.'
-        );
-        // No llamamos a signIn(), por lo que no entra al sistema.
-        return; 
-      }
-      
-      // 2. INICIAR SESIÓN EN EL STORE
-      // data debe coincidir con la interfaz LoginResponse del store
-      await signIn(data); 
+    } catch (error: any) {
+        console.log("Error Login:", error);
+        
+        let errorTitle = 'Error de inicio de sesión';
+        let errorMessage = 'Ocurrió un problema inesperado. Intenta nuevamente.';
 
-    } catch (error) {
-      const err = error as AxiosError<any>;
-      console.log("Error Login RAW:", err.response?.data); // Útil para ver qué llega exactamente
+        if (error.response) {
+            // El servidor respondió con un código de error (4xx, 5xx)
+            const data = error.response.data;
+            const status = error.response.status;
 
-      let mensaje = 'No se pudo conectar con el servidor';
-      
-      if (err.response?.data) {
-        const data = err.response.data;
-
-        // CASO 1: El backend envía 'detail' (común en 403/401)
-        if (data.detail) {
-          // AQUÍ ESTABA EL ERROR: Verificamos si es Array antes de asignarlo
-          mensaje = Array.isArray(data.detail) ? data.detail[0] : String(data.detail);
-        } 
-        // CASO 2: El backend envía errores de campo (ej: { "rut": ["Este campo es requerido"] })
-        else if (typeof data === 'object') {
-            const keys = Object.keys(data);
-            if (keys.length > 0) {
-                const firstKey = keys[0]; // Ej: "rut"
-                const firstError = data[firstKey]; // Ej: ["Error..."]
-                const errorTexto = Array.isArray(firstError) ? firstError[0] : String(firstError);
-                mensaje = `${firstKey.toUpperCase()}: ${errorTexto}`;
+            if (data.detail) {
+                // Caso Django Rest Framework estándar
+                errorMessage = Array.isArray(data.detail) ? data.detail[0] : data.detail;
+            } else if (data.non_field_errors) {
+                errorMessage = Array.isArray(data.non_field_errors) ? data.non_field_errors[0] : data.non_field_errors;
+            } else if (data.rut) {
+                errorMessage = `RUT: ${Array.isArray(data.rut) ? data.rut[0] : data.rut}`;
+            } else if (data.password) {
+                errorMessage = `Contraseña: ${Array.isArray(data.password) ? data.password[0] : data.password}`;
+            } else {
+                // Fallback por código de estado
+                if (status === 401) errorMessage = 'Credenciales incorrectas o cuenta inactiva.';
+                else if (status === 403) errorMessage = 'No tienes permisos para acceder.';
+                else if (status === 404) errorMessage = 'Servicio no encontrado (404).';
+                else if (status >= 500) errorMessage = 'Error interno del servidor.';
             }
+        } else if (error.request) {
+            // La petición se hizo pero no hubo respuesta (Timeout, Red)
+            errorTitle = 'Error de Conexión';
+            errorMessage = 'No se pudo conectar con el servidor. Verifica tu internet o la dirección IP.';
+        } else {
+            errorMessage = error.message;
         }
-      } else {
-        // Fallbacks por código de estado si el body viene vacío
-        if (err.response?.status === 401) mensaje = 'Credenciales incorrectas';
-        else if (err.response?.status === 403) mensaje = 'Acceso prohibido';
-        else if (err.response?.status === 404) mensaje = 'Servidor no encontrado';
-        else if (err.response && err.response.status >= 500) mensaje = 'Error interno del servidor';
-      }
 
-      // Ahora 'mensaje' es 100% seguro un string
-      Alert.alert('Error de Acceso', mensaje);
+        Alert.alert(errorTitle, errorMessage);
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
   };
 

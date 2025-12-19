@@ -7,20 +7,17 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#B71C1C"
     },
-    
     "ios": {
       "supportsTablet": true
     },
-    
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png", 
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#B71C1C"
       },
       "splash": {
@@ -28,13 +25,19 @@
         "resizeMode": "contain",
         "backgroundColor": "#B71C1C"
       },
-      "package": "com.esoterichog.bomberilmobile"
+      "package": "com.esoterichog.bomberilmobile",
+      "versionCode": 1,
+      "permissions": [
+        "CAMERA",
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ]
     },
-    
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    
     "plugins": [
       "expo-secure-store",
       [
@@ -43,6 +46,11 @@
           "faceIDPermission": "Permitir usar reconocimiento facial."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "88a4225e-aa00-4680-b514-f2172fbcc184"
+      }
+    }
   }
 }

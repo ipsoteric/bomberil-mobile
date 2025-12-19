@@ -4,10 +4,10 @@ import { ENDPOINTS } from './endpoints';
 
 // NOTA IMPORTANTE SOBRE LA URL:
 // 1. Emulador Android: Usa 'http://10.0.2.2:8000/api/' (apunta al localhost de tu PC).
-// 2. Dispositivo Físico (USB/WiFi): Usa tu IP local, ej: 'http://192.168.101.5:8000/api/'.
+// 2. Dispositivo Físico (USB/WiFi): Usa tu IP local, ej: 'http://192.168.101.5:8000/api/v1'.
 // 3. IP Virtual: 'http://172.30.16.1:8000/api/v1/'
 // 4. Emulador iOS: Usa 'http://localhost:8000/api/'.
-export const API_URL = 'http://192.168.101.5:8000/api/v1/'; 
+export const API_URL = 'https://bomberilsystem.castillodev.cl'; 
 
 const client = axios.create({
   baseURL: API_URL,
@@ -62,8 +62,9 @@ client.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // Evitar bucles infinitos en logout
-    if (originalRequest.url?.includes('auth/logout')) {
+    // Si falla el Login o el Logout, NO intentamos refrescar.
+    // Devolvemos el error inmediatamente para que la UI (LoginScreen) lo muestre.
+    if (originalRequest.url?.includes('auth/logout') || originalRequest.url?.includes('auth/login')) {
         return Promise.reject(error);
     }
 
