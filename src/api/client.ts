@@ -7,7 +7,7 @@ import { ENDPOINTS } from './endpoints';
 // 2. Dispositivo Físico (USB/WiFi): Usa tu IP local, ej: 'http://192.168.101.5:8000/api/v1'.
 // 3. IP Virtual: 'http://172.30.16.1:8000/api/v1/'
 // 4. Emulador iOS: Usa 'http://localhost:8000/api/'.
-export const API_URL = 'https://bomberilsystem.castillodev.cl'; 
+export const API_URL = 'https://bomberilsystem.castillodev.cl/api/v1/'; 
 
 const client = axios.create({
   baseURL: API_URL,
