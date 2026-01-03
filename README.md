@@ -25,7 +25,7 @@ La aplicación móvil optimiza los flujos críticos definidos en la tesis median
 
 
 
-## 🌐 Ecosistema Bomberil System
+## Ecosistema Bomberil System
 
 Este repositorio corresponde al **cliente móvil**. Para el funcionamiento integral, se requiere el núcleo central que gestiona la base de datos, la lógica administrativa y el panel web:
 
